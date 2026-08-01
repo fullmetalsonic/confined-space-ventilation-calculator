@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+build/
+.build/
+dist/VentCalc.exe
+dist/windows/*.exe
+*.spec
+.qa_docx/
+
+# Local work products and agent attachment cache
+.codex-remote-attachments/
+tmp/
+work/
+output/

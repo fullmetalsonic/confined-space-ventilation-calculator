@@ -1,0 +1,3705 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>밀폐공간 환기량 산정 · 송배풍기 매칭 도구 — v0.2</title>
+<style>
+  :root{
+    /* POSCO 공식 CI 색상을 중심으로, 화면은 더 맑고 밝게 보이도록 구성 */
+    --navy:#05507D;
+    --navy-dark:#043D61;
+    --navy-light:#0077B3;
+    --sky:#00A5E5;
+    --sky-bg:#EFFAFF;
+    --sky-soft:#DDF4FF;
+    --amber:#BF8F00;
+    --amber-bg:#FFF2CC;
+    --amber-border:#E0B400;
+    --danger:#B3261E;
+    --danger-bg:#FBE9E7;
+    --ok:#2E7D32;
+    --ok-bg:#E8F5E9;
+    --line:#CFE7F4;
+    --paper:#F7FCFF;
+    --ink:#173047;
+    --ink-soft:#526A7D;
+    --card:#FFFFFF;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.55;
+  }
+  /* 브라우저 기본값: button/input/select/textarea는 폰트를 상속받지 않고
+     각기 다른 UA 기본 폰트(예: 버튼=Arial)를 쓰기 때문에, 같은 .btn 클래스를 써도
+     <button>과 <label>의 렌더링 높이가 달라지는 문제가 있어 명시적으로 상속시킴 */
+  button, input, select, textarea{
+    font-family:inherit;
+    line-height:inherit;
+  }
+  button{
+    -webkit-appearance:none;
+    appearance:none;
+    margin:0;
+  }
+  header.app-header{
+    position:relative;
+    background:linear-gradient(120deg,var(--navy) 0%,var(--navy-light) 58%,var(--sky) 135%);
+    color:#fff;
+    padding:22px 28px 18px;
+  }
+  header.app-header h1{
+    margin:0 0 4px;
+    font-size:22px;
+    letter-spacing:.2px;
+  }
+  header.app-header p{
+    margin:0;
+    font-size:13px;
+    color:rgba(255,255,255,.9);
+  }
+  .credit{
+    position:absolute;
+    top:12px;
+    right:16px;
+    font-size:10.5px;
+    color:rgba(255,255,255,.75);
+    letter-spacing:.3px;
+  }
+  @media screen and (max-width:640px){
+    .credit{
+      position:static;
+      display:block;
+      text-align:right;
+      margin-top:6px;
+      font-size:9.5px;
+    }
+  }
+  .warn-banner{
+    background:var(--amber-bg);
+    border-top:1px solid var(--amber-border);
+    border-bottom:1px solid var(--amber-border);
+    color:#7A5B00;
+    font-size:13px;
+    padding:10px 28px;
+    display:flex;
+    gap:8px;
+    align-items:flex-start;
+  }
+  .warn-banner b{white-space:nowrap;}
+  .shell{
+    max-width:1100px;
+    margin:0 auto;
+    padding:22px 20px 60px;
+  }
+  details.ref-panel{
+    background:var(--sky-bg);
+    border-bottom:1px solid var(--line);
+    padding:0;
+  }
+  details.ref-panel summary{
+    cursor:pointer;
+    padding:9px 28px;
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--navy);
+    list-style:none;
+  }
+  details.ref-panel summary::-webkit-details-marker{display:none;}
+  .ref-panel-body{
+    padding:6px 28px 16px;
+    max-width:1100px;
+    margin:0 auto;
+  }
+  .ref-panel-body table{max-width:480px;}
+  .ref-panel-body table.wide{max-width:760px;}
+  .ref-panel-body .hint{margin-top:8px;}
+  .guidance-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    align-items:start;
+    gap:10px;
+    margin-top:12px;
+  }
+  .guidance-grid.has-open{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+  details.guidance-group{
+    border:1px solid var(--line);
+    border-radius:9px;
+    background:#fff;
+    overflow:hidden;
+  }
+  .guidance-grid.has-open details.guidance-group[open]{
+    order:-1;
+    grid-column:1 / -1;
+  }
+  .guidance-grid.has-open details.guidance-group:not([open]){
+    grid-column:auto;
+    align-self:stretch;
+  }
+  .guidance-grid.has-open details.guidance-group:not([open]) summary{
+    display:flex;
+    align-items:center;
+    min-height:100%;
+    box-sizing:border-box;
+  }
+  details.guidance-group summary{
+    padding:10px 12px;
+    background:linear-gradient(90deg,var(--sky-bg),#fff);
+    color:var(--navy);
+    font-size:12px;
+    font-weight:800;
+  }
+  details.guidance-group[open] summary{border-bottom:1px solid var(--line);}
+  .guidance-body{padding:10px 12px;font-size:11.5px;line-height:1.55;}
+  .guidance-body ul{margin:0;padding-left:18px;}
+  .guidance-body li{margin:4px 0;}
+  .guidance-body .source-note{
+    margin:8px 0 0;
+    padding-top:7px;
+    border-top:1px dashed var(--line);
+    color:var(--ink-soft);
+    font-size:10.5px;
+  }
+  .legal-tag{
+    display:inline-block;
+    margin-left:4px;
+    padding:1px 6px;
+    border-radius:20px;
+    background:var(--sky-soft);
+    color:var(--navy);
+    font-size:10px;
+    font-weight:700;
+    vertical-align:1px;
+  }
+  .stepper{
+    display:flex;
+    list-style:none;
+    margin:0 0 22px;
+    padding:0;
+    border-radius:var(--radius);
+    overflow:hidden;
+    border:1px solid var(--line);
+    background:#fff;
+    box-shadow:0 4px 14px rgba(5,80,125,.06);
+  }
+  .session-bar{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:12px;
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px 16px;
+    margin-bottom:14px;
+  }
+  .session-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .stepper li{
+    flex:1;
+    text-align:center;
+    padding:11px 4px;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    background:#fff;
+    border-right:1px solid var(--line);
+    cursor:pointer;
+    position:relative;
+    user-select:none;
+  }
+  .stepper li:last-child{border-right:none;}
+  .stepper li .num{
+    display:inline-block;
+    width:18px;height:18px;
+    line-height:18px;
+    border-radius:50%;
+    background:#E7ECF3;
+    color:var(--navy);
+    font-weight:700;
+    font-size:11px;
+    margin-right:5px;
+  }
+  .stepper li.active{
+    background:linear-gradient(120deg,var(--navy),var(--navy-light));
+    color:#fff;
+    font-weight:700;
+  }
+  .stepper li.active .num{background:#fff;color:var(--navy);}
+  .stepper li.done .num{background:var(--ok);color:#fff;}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:22px 24px;
+    margin-bottom:16px;
+    box-shadow:0 7px 22px rgba(5,80,125,.055);
+  }
+  .card h2{
+    margin:0 0 4px;
+    font-size:17px;
+    color:var(--navy);
+  }
+  .card .sub{
+    margin:0 0 16px;
+    font-size:12.5px;
+    color:var(--ink-soft);
+  }
+  .grid{display:grid;gap:14px;}
+  .grid.cols-2{grid-template-columns:1fr 1fr;}
+  .grid.cols-3{grid-template-columns:1fr 1fr 1fr;}
+  @media screen and (max-width:720px){
+    .grid.cols-2, .grid.cols-3{grid-template-columns:1fr;}
+  }
+  label{
+    display:block;
+    font-size:12.5px;
+    font-weight:700;
+    color:#374151;
+    margin-bottom:5px;
+  }
+  label .opt{font-weight:400;color:var(--ink-soft);}
+  input[type=text], input[type=number], select{
+    width:100%;
+    padding:9px 10px;
+    border:1px solid #C9D2DE;
+    border-radius:7px;
+    font-size:14px;
+    background:#fff;
+    color:var(--ink);
+  }
+  input:focus, select:focus{outline:2px solid var(--navy-light);outline-offset:1px;}
+  .field{margin-bottom:12px;}
+  .field .hint{font-size:11.5px;color:var(--ink-soft);margin-top:4px;}
+  .field .err{font-size:11.5px;color:var(--danger);margin-top:4px;display:none;}
+
+  .choice-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+  @media screen and (max-width:720px){.choice-row{grid-template-columns:1fr;}}
+  .choice{
+    border:2px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px;
+    cursor:pointer;
+    background:#fff;
+    transition:.12s;
+  }
+  .choice:hover{border-color:var(--navy-light);}
+  .choice.selected{border-color:var(--sky);background:var(--sky-bg);box-shadow:0 5px 16px rgba(0,165,229,.1);}
+  .choice h3{margin:0 0 6px;font-size:14.5px;color:var(--navy);}
+  .choice p{margin:0;font-size:12.5px;color:var(--ink-soft);}
+  .choice .tag{
+    display:inline-block;
+    font-size:10.5px;
+    font-weight:700;
+    color:#fff;
+    background:var(--navy-light);
+    padding:2px 7px;
+    border-radius:20px;
+    margin-bottom:8px;
+  }
+
+  .subchoice{display:flex;gap:10px;margin-top:10px;}
+  .subchoice button{
+    flex:1;
+    padding:9px;
+    border-radius:7px;
+    border:1px solid #C9D2DE;
+    background:#fff;
+    font-size:13px;
+    cursor:pointer;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .subchoice button.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    height:44px;
+    padding:0 18px;
+    box-sizing:border-box;
+    border-radius:8px;
+    border:1px solid var(--navy);
+    background:linear-gradient(120deg,var(--navy),var(--navy-light));
+    color:#fff;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    box-shadow:0 3px 9px rgba(5,80,125,.14);
+  }
+  .btn.secondary{background:#fff;color:var(--navy);box-shadow:none;}
+  .btn.ghost{background:#fff;color:var(--ink-soft);border-color:#C9D2DE;font-weight:600;}
+  .btn.small{height:36px;padding:0 12px;font-size:12.5px;}
+  .btn.danger{background:#fff;color:var(--danger);border-color:var(--danger);}
+  .btn-icon{font-size:1.25em;line-height:1;}
+  .btn-icon-svg{width:16px;height:16px;flex-shrink:0;vertical-align:-3px;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .nav-row{display:flex;justify-content:space-between;margin-top:6px;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{border:1px solid var(--line);padding:8px 9px;text-align:center;}
+  th{background:var(--sky-soft);color:var(--navy);font-size:12px;}
+  td input{padding:6px 7px;font-size:13px;}
+  tfoot td{font-weight:700;background:#F1FAFF;}
+
+  .result-box{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    margin-bottom:6px;
+  }
+  @media screen and (max-width:720px){.result-box{grid-template-columns:1fr;}}
+  .metric{
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px 18px;
+    background:linear-gradient(145deg,#fff 0%,var(--sky-bg) 100%);
+  }
+  .metric .label{font-size:12px;color:var(--ink-soft);font-weight:700;}
+  .metric .value{font-size:26px;color:var(--navy);font-weight:800;margin-top:4px;}
+  .metric .unit{font-size:13px;color:var(--ink-soft);font-weight:600;}
+
+  .formula-box{
+    background:#F2F4F7;
+    border:1px solid #D8DEE7;
+    border-radius:8px;
+    padding:12px 14px;
+    font-family:Consolas,monospace;
+    font-size:12.5px;
+    color:#2B2F36;
+    white-space:pre-wrap;
+    margin:10px 0;
+  }
+  .note{
+    background:var(--amber-bg);
+    border-left:4px solid var(--amber-border);
+    padding:10px 12px;
+    font-size:12.5px;
+    color:#7A5B00;
+    border-radius:0 6px 6px 0;
+    margin:10px 0;
+  }
+  .note.danger{background:var(--danger-bg);border-left-color:var(--danger);color:#7A1E17;}
+  .note.ok{background:var(--ok-bg);border-left-color:var(--ok);color:#1E4A21;}
+
+  .badge{
+    display:inline-block;
+    font-size:11px;
+    font-weight:700;
+    padding:2px 8px;
+    border-radius:20px;
+  }
+  .badge.warn{background:var(--amber-bg);color:#7A5B00;border:1px solid var(--amber-border);}
+  .badge.ok{background:var(--ok-bg);color:#1E4A21;border:1px solid var(--ok);}
+  .badge.bad{background:var(--danger-bg);color:#7A1E17;border:1px solid var(--danger);}
+
+  .poly-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;}
+  .poly-row span{width:18px;font-size:12px;color:var(--ink-soft);}
+  .poly-row input{flex:1;}
+
+  .zone-card{
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    background:#FAFBFD;
+    padding:14px 16px;
+    margin-bottom:12px;
+  }
+  .zone-card-head{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:wrap;
+    margin-bottom:10px;
+  }
+  .zone-card-head input.zone-name{
+    flex:1 1 160px;
+    min-width:120px;
+    height:38px;
+    box-sizing:border-box;
+    padding:0 9px;
+    border:1px solid #C9D2DE;
+    border-radius:7px;
+    font-size:13.5px;
+  }
+  .zone-card-head select{
+    flex:0 0 auto;
+    width:auto;
+    height:38px;
+    box-sizing:border-box;
+    padding:0 9px;
+    border:1px solid #C9D2DE;
+    border-radius:7px;
+    font-size:13px;
+  }
+  .zone-sign{display:flex;gap:4px;}
+  .zone-sign button{
+    height:38px;
+    box-sizing:border-box;
+    padding:0 10px;
+    border-radius:7px;
+    border:1px solid #C9D2DE;
+    background:#fff;
+    font-size:12.5px;
+    font-weight:700;
+    cursor:pointer;
+    color:var(--ink);
+  }
+  .zone-sign button.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+  .zone-card-head .btn.small{height:38px;}
+  .zone-volume{
+    margin-top:8px;
+    font-size:13px;
+    font-weight:700;
+    color:var(--navy);
+  }
+
+  .info-toggle{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:16px;height:16px;
+    border-radius:50%;
+    border:1px solid var(--navy-light);
+    background:#fff;
+    color:var(--navy-light);
+    font-size:10.5px;
+    font-weight:700;
+    line-height:1;
+    cursor:pointer;
+    margin-left:4px;
+    padding:0;
+    vertical-align:middle;
+  }
+  .info-box{
+    background:var(--sky-bg);
+    border:1px solid var(--line);
+    border-radius:7px;
+    padding:8px 10px;
+    font-size:12px;
+    color:#374151;
+    line-height:1.5;
+    margin:6px 0 10px;
+  }
+
+  .report{font-size:13.5px;}
+  .report h3{color:var(--navy);border-bottom:2px solid var(--navy);padding-bottom:4px;margin-top:22px;}
+  .report table{margin:10px 0 18px;}
+  .report table th, .report table td{vertical-align:middle;}
+  .report table.responsive-table{table-layout:fixed;}
+  .report .kv{display:grid;grid-template-columns:180px 1fr;gap:4px 12px;margin:4px 0;}
+  .report .kv div:nth-child(odd){color:var(--ink-soft);font-weight:600;}
+  .permit-checklist{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:5px 10px;
+    margin:7px 0;
+  }
+  .permit-check{
+    height:100%;
+    box-sizing:border-box;
+    min-height:132px;
+    padding:9px 10px;
+    border:1px solid var(--line);
+    border-radius:7px;
+    background:#FAFDFF;
+    font-size:11.5px;
+    line-height:1.4;
+  }
+  .permit-check-head{
+    display:grid;
+    grid-template-columns:24px 1fr;
+    gap:8px;
+    align-items:center;
+    padding-bottom:6px;
+    margin-bottom:3px;
+    border-bottom:1px solid var(--line);
+  }
+  .permit-check .check-num{
+    width:24px;
+    height:24px;
+    line-height:24px;
+    border-radius:50%;
+    text-align:center;
+    color:#fff;
+    background:var(--navy-light);
+    font-size:11px;
+    font-weight:800;
+  }
+  .permit-check-title b{display:block;color:var(--navy);font-size:12px;}
+  .permit-check-title small{display:block;color:var(--ink-soft);font-size:10.5px;line-height:1.3;}
+  .permit-subcheck{
+    display:grid;
+    grid-template-columns:minmax(92px,0.34fr) 1fr;
+    gap:7px;
+    padding:4px 1px;
+    align-items:start;
+  }
+  .permit-subcheck + .permit-subcheck{border-top:1px dashed #D7E4EC;}
+  .permit-subcheck b{color:var(--navy);font-size:10.8px;}
+  .permit-subcheck span{color:#374151;}
+  .report-source-table{table-layout:fixed;}
+  .report-source-table tbody tr{height:42px;}
+  .report-source-table td{height:42px;vertical-align:middle;}
+  .report-source-table td:first-child{
+    width:20%;
+    font-weight:700;
+    color:var(--navy);
+    white-space:nowrap;
+    text-align:center;
+  }
+  #fan-table{table-layout:fixed;}
+  #fan-table th, #fan-table td{overflow-wrap:anywhere;}
+  #fan-table .fan-delete-cell{padding-left:4px;padding-right:4px;text-align:center;}
+  .fan-delete-btn{
+    min-width:48px;
+    height:36px;
+    padding:0 7px;
+    white-space:nowrap;
+    word-break:keep-all;
+  }
+  .fan-basis-wrap, .fan-output-wrap{min-width:0;text-align:center;}
+  .fan-basis-input{width:100%;min-width:0;}
+  .fan-advanced-row td{background:#F8FBFD;text-align:left;}
+  .fan-advanced{
+    border:1px dashed var(--line);
+    border-radius:7px;
+    padding:6px 9px;
+  }
+  .fan-advanced summary{cursor:pointer;color:var(--navy);font-weight:700;font-size:11px;}
+  .fan-advanced-grid{
+    display:grid;
+    grid-template-columns:repeat(5,minmax(0,1fr));
+    gap:7px;
+    margin-top:7px;
+  }
+  .fan-advanced-grid .field{margin:0;}
+  .fan-advanced-grid label{font-size:10.5px;}
+  .fan-advanced-note{grid-column:span 2;}
+  .language-options{
+    margin:10px 0 14px;
+    padding:9px 11px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--sky-bg);
+  }
+  .language-options summary{cursor:pointer;color:var(--navy);font-weight:800;}
+  .language-grid{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:6px 10px;
+    margin-top:9px;
+  }
+  .language-grid label{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 8px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    background:#fff;
+    font-size:11.5px;
+    min-height:38px;
+    box-sizing:border-box;
+    line-height:1.25;
+    cursor:pointer;
+  }
+  .language-grid label input{flex:0 0 auto;}
+  .language-grid .lang-ko{font-weight:800;color:var(--navy);}
+  .language-grid .lang-native{color:var(--ink-soft);}
+  .translated-report{
+    margin-top:28px;
+    padding-top:16px;
+    border-top:3px double var(--navy);
+    font-family:"Noto Sans","Malgun Gothic","Microsoft YaHei","Yu Gothic","Leelawadee UI","Myanmar Text","Khmer UI",Arial,sans-serif;
+  }
+  .translated-title{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    align-items:flex-end;
+    border-bottom:2px solid var(--navy);
+    padding-bottom:5px;
+    margin-bottom:8px;
+    color:var(--navy);
+    font-size:18px;
+    font-weight:800;
+  }
+  .translated-title small{font-size:10px;color:var(--ink-soft);font-weight:500;text-align:right;}
+  .translated-disclaimer{font-size:10.5px;color:#7A4B00;background:#FFF8DB;border:1px solid var(--amber-border);padding:6px 8px;border-radius:5px;}
+  .translated-checks{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin:8px 0;}
+  .translated-check{border:1px solid var(--line);border-radius:6px;padding:7px 9px;background:#FAFDFF;font-size:11px;line-height:1.35;}
+  .translated-check b{display:block;color:var(--navy);margin-bottom:2px;}
+  .translated-report .sig-table{
+    table-layout:fixed;
+    margin-top:8px;
+  }
+  .translated-report .sig-table thead th{
+    height:36px;
+    box-sizing:border-box;
+    vertical-align:middle;
+  }
+  .translated-report .sig-table tbody tr{
+    height:48px;
+  }
+  .translated-report .sig-table tbody td{
+    box-sizing:border-box;
+    height:48px;
+    padding:0 8px;
+    vertical-align:middle;
+  }
+
+  /* ============================================================
+     모바일·소형 태블릿 반응형 (~760px 이하)
+     PC와 다른 배치: 세로 스택, 카드형 표, 터치 타겟 확대, 입력 확대 방지
+  ============================================================ */
+  @media screen and (max-width: 760px){
+    .shell{padding:14px 12px 40px;}
+    header.app-header{padding:16px 16px 14px;}
+    header.app-header h1{font-size:17px;line-height:1.35;}
+    header.app-header p{font-size:11px;}
+    .warn-banner{padding:9px 14px;font-size:11.5px;}
+    details.ref-panel summary{padding:9px 14px;font-size:12px;}
+    .ref-panel-body{padding:6px 14px 14px;}
+    .ref-panel-body table{max-width:100%;}
+    .ref-panel-body table.wide{max-width:100%;font-size:11px;}
+    .guidance-grid,
+    .guidance-grid.has-open{grid-template-columns:1fr;}
+    .guidance-grid.has-open details.guidance-group[open]{grid-column:auto;}
+
+    .session-bar{flex-direction:column;align-items:stretch;padding:12px 14px;}
+    .session-actions{flex-direction:column;}
+    .session-actions .btn{width:100%;}
+
+    /* 스텝퍼: 가로 스크롤 방식으로 전환 (PC는 균등폭 탭) */
+    .stepper{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;margin-bottom:14px;}
+    .stepper li{flex:0 0 auto;min-width:76px;font-size:11px;padding:9px 10px;white-space:nowrap;}
+
+    .card{padding:16px 14px;margin-bottom:12px;}
+    .card h2{font-size:15px;}
+    .card .sub{font-size:11.5px;}
+
+    .choice-row{grid-template-columns:1fr;}
+    .grid.cols-2, .grid.cols-3{grid-template-columns:1fr;}
+    .result-box{grid-template-columns:1fr;}
+    .metric .value{font-size:22px;}
+
+    /* iOS 자동확대 방지: 입력 폰트 16px 이상 */
+    input[type=text], input[type=number], select{font-size:16px;padding:10px 11px;}
+
+    /* 버튼: 터치 타겟 확대, 전체폭 (데스크톱과 동일하게 고정 높이 방식 사용) */
+    .btn{width:100%;justify-content:center;height:48px;padding:0 16px;font-size:15px;}
+    .btn.small{width:auto;height:42px;padding:0 14px;font-size:13px;}
+    .nav-row{flex-direction:column;gap:8px;}
+    .nav-row span{display:none;}
+
+    .subchoice{flex-wrap:wrap;}
+    .subchoice button{flex:1 1 45%;}
+
+    /* 팬 매칭 표 -> 모바일 카드형으로 전환 */
+    table.responsive-table thead{display:none;}
+    table.responsive-table, table.responsive-table tbody, table.responsive-table tfoot,
+    table.responsive-table tr, table.responsive-table td{display:block; width:100%;}
+    table.responsive-table{border:none;}
+    table.responsive-table tbody tr{
+      border:1px solid var(--line);
+      border-radius:8px;
+      margin-bottom:10px;
+      padding:6px 12px;
+      background:#fff;
+    }
+    table.responsive-table tfoot tr{padding:8px 12px;font-weight:700;}
+    table.responsive-table td{
+      border:none !important;
+      border-bottom:1px solid #EEF1F5 !important;
+      padding:8px 0 !important;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      text-align:right;
+    }
+    table.responsive-table td:last-child{border-bottom:none !important;}
+    table.responsive-table td[data-label]::before{
+      content: attr(data-label);
+      font-weight:700;
+      color:var(--navy);
+      font-size:11.5px;
+      flex:0 0 auto;
+      text-align:left;
+    }
+    table.responsive-table td input[type=text],
+    table.responsive-table td input[type=number]{
+      max-width:58%;
+      text-align:right;
+    }
+    table.responsive-table td select{max-width:58%;}
+    table.responsive-table td .hint{text-align:right;}
+    table.responsive-table td .fan-basis-wrap,
+    table.responsive-table td .fan-output-wrap{width:58%;max-width:58%;text-align:right;}
+    table.responsive-table td .fan-basis-wrap input{max-width:100%;width:100%;}
+    table.responsive-table td.fan-delete-cell{justify-content:flex-end;padding-top:10px !important;}
+    .fan-delete-btn{width:auto !important;min-width:76px;height:42px;padding:0 14px;}
+    table.responsive-table tbody tr.fan-advanced-row{
+      display:block !important;
+      margin-top:-11px;
+      padding:0 6px 6px;
+      border-top:none;
+      border-radius:0 0 8px 8px;
+      background:#F8FBFD;
+    }
+    .fan-advanced-row td{display:block !important;padding:6px !important;}
+    .fan-advanced-grid{grid-template-columns:1fr 1fr;}
+    .fan-advanced-note{grid-column:1 / -1;}
+
+    .session-bar .field{max-width:none;}
+    .permit-checklist{grid-template-columns:1fr;}
+    .language-grid{grid-template-columns:1fr 1fr;}
+    .translated-checks{grid-template-columns:1fr;}
+    .translated-report table:not(.sig-table){
+      display:block;
+      max-width:100%;
+      overflow-x:auto;
+      white-space:nowrap;
+      -webkit-overflow-scrolling:touch;
+    }
+  }
+  @media screen and (max-width: 430px){
+    .shell{padding-left:8px;padding-right:8px;}
+    .card{padding-left:10px;padding-right:10px;}
+    .language-grid{grid-template-columns:1fr;}
+    .fan-advanced-grid{grid-template-columns:1fr;}
+    .fan-advanced-note{grid-column:auto;}
+    .permit-subcheck{grid-template-columns:1fr;gap:2px;}
+  }
+
+  @page{
+    size: A4;
+    margin: 14mm 13mm;
+  }
+  .print-title{display:none;}
+  @media print{
+    header.app-header, .warn-banner, .ref-panel, .stepper, .nav-row, .no-print{display:none !important;}
+    html, body{background:#fff; margin:0; padding:0;}
+    .shell{max-width:none; width:auto; padding:0; margin:0;}
+    .card{border:none; padding:0; margin:0; box-shadow:none;}
+
+    .print-title{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+      font-size:15px;
+      font-weight:800;
+      color:#111;
+      border-bottom:1.5px solid #111;
+      padding-bottom:4px;
+      margin-bottom:5px;
+    }
+    .print-title .pt-sub{
+      font-weight:400;
+      font-size:9.5px;
+      color:#444;
+      float:none;
+      max-width:58%;
+      text-align:right;
+      overflow-wrap:anywhere;
+    }
+
+    .report{font-size:8.9px; line-height:1.25;}
+    .report h3{
+      font-size:10.3px;
+      border-bottom-width:1px;
+      padding-bottom:2px;
+      margin:4px 0 2px;
+      page-break-after:avoid;
+      break-after:avoid;
+    }
+    .report h3:first-of-type{margin-top:0;}
+    .report p{margin:1px 0;orphans:2;widows:2;}
+    .report table{
+      font-size:8.2px;
+      line-height:1.18;
+      margin:2px 0 4px;
+      page-break-inside:avoid;
+      break-inside:avoid;
+    }
+    .report table th, .report table td{padding:2px 4px;vertical-align:middle;}
+    .report table thead{display:table-header-group;}
+    .report table tr{page-break-inside:avoid;break-inside:avoid;}
+    .report table.responsive-table{page-break-inside:auto;break-inside:auto;}
+    .report table.sig-table{table-layout:fixed;margin-top:2px;}
+    .report table.sig-table tbody tr{height:30px !important;}
+    .report table.sig-table tbody td{
+      box-sizing:border-box;
+      height:30px !important;
+      padding:0 5px !important;
+      line-height:30px;
+      vertical-align:middle;
+    }
+    .report .kv{grid-template-columns:125px 1fr;gap:2px 8px;margin:0;page-break-inside:avoid;break-inside:avoid;}
+    .report .note{padding:3px 5px;font-size:8.2px;line-height:1.22;margin:2px 0;}
+    .report .hint{font-size:7.8px;line-height:1.18;margin:1px 0 2px;}
+    .permit-checklist{grid-template-columns:1fr 1fr;gap:1px 5px;margin:2px 0;}
+    .permit-check{height:100%;min-height:66px;padding:3px 4px;font-size:7.5px;line-height:1.14;border-radius:3px;}
+    .permit-check-head{grid-template-columns:14px 1fr;gap:4px;padding-bottom:2px;margin-bottom:1px;}
+    .permit-check .check-num{width:14px;height:14px;line-height:14px;font-size:7px;}
+    .permit-check-title b{font-size:8px;}
+    .permit-check-title small{font-size:7px;line-height:1.1;}
+    .permit-subcheck{grid-template-columns:74px 1fr;gap:3px;padding:2px 0;}
+    .permit-subcheck b{font-size:7.3px;}
+    .report-source-table{table-layout:fixed;font-size:7.8px !important;line-height:1.15 !important;}
+    .report-source-table tbody tr{height:24px !important;}
+    .report-source-table td{height:24px !important;padding:1px 3px !important;vertical-align:middle;}
+    .report-source-table td:first-child{white-space:normal;width:20%;text-align:center;}
+    .translated-report{
+      page-break-before:always;
+      break-before:page;
+      margin:0;
+      padding:0;
+      border-top:none;
+      font-size:8.8px;
+      line-height:1.22;
+    }
+    .translated-title{font-size:14px;padding-bottom:3px;margin-bottom:4px;border-bottom-width:1.5px;}
+    .translated-title small{font-size:7.5px;}
+    .translated-disclaimer{font-size:7.5px;line-height:1.2;padding:3px 5px;margin:2px 0;}
+    .translated-report h3{font-size:9.8px;margin:4px 0 2px;padding-bottom:1px;}
+    .translated-checks{grid-template-columns:1fr 1fr;gap:3px 5px;margin:3px 0;}
+    .translated-check{font-size:7.7px;line-height:1.18;padding:3px 4px;border-radius:3px;}
+    .report .translated-report table.sig-table{margin-top:3px;}
+    .report .translated-report table.sig-table thead th{
+      height:24px !important;
+      padding:2px 4px !important;
+    }
+    .report .translated-report table.sig-table tbody tr{height:38px !important;}
+    .report .translated-report table.sig-table tbody td{
+      height:38px !important;
+      padding:0 5px !important;
+      line-height:38px;
+    }
+  }
+</style>
+<style id="ui-design-v02">
+  /*
+    v0.2 화면 디자인 시스템
+    - 계산·저장·인쇄 로직은 변경하지 않음
+    - 화면에서만 적용되며 기존 @media print 규칙은 그대로 유지
+  */
+  @media screen{
+    :root{
+      --navy:#075985;
+      --navy-dark:#063B59;
+      --navy-light:#087EBA;
+      --sky:#18A4D8;
+      --sky-bg:#F1F9FD;
+      --sky-soft:#E3F4FB;
+      --amber:#A86F00;
+      --amber-bg:#FFF8E5;
+      --amber-border:#F2C65C;
+      --danger:#C0362C;
+      --danger-bg:#FFF0EE;
+      --ok:#18794E;
+      --ok-bg:#EAF8F1;
+      --line:#D8E4EB;
+      --paper:#F3F7FA;
+      --ink:#172B3A;
+      --ink-soft:#5D7180;
+      --card:#FFFFFF;
+      --radius:14px;
+      --ui-border:#D8E4EB;
+      --ui-shadow:0 12px 32px rgba(35,72,96,.08);
+      --ui-shadow-soft:0 4px 14px rgba(35,72,96,.06);
+      --ui-focus:0 0 0 4px rgba(24,164,216,.14);
+    }
+
+    html{background:var(--paper);}
+    body{
+      min-height:100vh;
+      background:
+        radial-gradient(circle at 8% 0%,rgba(24,164,216,.07),transparent 24rem),
+        linear-gradient(180deg,#F8FBFD 0,#F3F7FA 34rem);
+      font-family:system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+      color:var(--ink);
+      letter-spacing:-.01em;
+    }
+
+    header.app-header{
+      min-height:126px;
+      padding:28px max(28px,calc((100% - 1140px)/2 + 20px)) 25px;
+      overflow:hidden;
+      background:
+        radial-gradient(circle at 82% 25%,rgba(90,209,245,.24),transparent 20rem),
+        linear-gradient(118deg,#063B59 0%,#075985 52%,#0E86B8 100%);
+      box-shadow:0 10px 28px rgba(6,59,89,.16);
+    }
+    header.app-header::before{
+      content:"VENTILATION PLANNING";
+      display:inline-flex;
+      align-items:center;
+      height:22px;
+      margin-bottom:9px;
+      padding:0 9px;
+      border:1px solid rgba(255,255,255,.24);
+      border-radius:999px;
+      background:rgba(255,255,255,.1);
+      color:rgba(255,255,255,.9);
+      font-size:9px;
+      font-weight:800;
+      letter-spacing:.14em;
+    }
+    header.app-header::after{
+      content:"";
+      position:absolute;
+      width:250px;
+      height:250px;
+      right:-46px;
+      bottom:-176px;
+      border:34px solid rgba(255,255,255,.055);
+      border-radius:50%;
+      pointer-events:none;
+    }
+    header.app-header h1{
+      max-width:1140px;
+      margin:0 auto 5px;
+      font-size:24px;
+      line-height:1.3;
+      letter-spacing:-.035em;
+    }
+    header.app-header p{
+      max-width:1140px;
+      margin:0 auto;
+      font-size:12.5px;
+      color:rgba(255,255,255,.78);
+    }
+    .credit{
+      display:block;
+      top:18px;
+      right:max(20px,calc((100% - 1140px)/2 + 20px));
+      padding:4px 8px;
+      border-radius:999px;
+      background:rgba(2,32,49,.18);
+      color:rgba(255,255,255,.72);
+      font-size:9.5px;
+    }
+
+    .warn-banner{
+      justify-content:center;
+      gap:10px;
+      padding:11px max(24px,calc((100% - 1140px)/2 + 20px));
+      border:0;
+      border-bottom:1px solid #F2DFC0;
+      background:#FFFAEC;
+      color:#715018;
+      font-size:12px;
+      line-height:1.5;
+    }
+    .warn-banner b:first-child{
+      display:inline-flex;
+      align-items:center;
+      height:24px;
+      padding:0 8px;
+      border-radius:6px;
+      background:#F8E6B5;
+      color:#795200;
+      font-size:10.5px;
+    }
+
+    details.ref-panel{
+      background:rgba(255,255,255,.82);
+      border-bottom:1px solid var(--ui-border);
+      box-shadow:0 4px 18px rgba(35,72,96,.035);
+      backdrop-filter:blur(8px);
+    }
+    details.ref-panel summary{
+      max-width:1140px;
+      margin:0 auto;
+      padding:12px 20px;
+      color:var(--navy);
+      font-size:12px;
+    }
+    details.ref-panel summary::after{
+      content:"열기";
+      float:right;
+      padding:2px 8px;
+      border-radius:999px;
+      background:var(--sky-soft);
+      color:var(--navy-light);
+      font-size:9.5px;
+      font-weight:800;
+    }
+    details.ref-panel[open] summary::after{content:"닫기";}
+    .ref-panel-body{padding:10px 20px 22px;}
+
+    .shell{
+      max-width:1180px;
+      padding:28px 20px 72px;
+    }
+    .session-bar{
+      gap:16px;
+      padding:16px 18px;
+      margin-bottom:18px;
+      border:1px solid rgba(199,216,226,.85);
+      border-radius:16px;
+      box-shadow:var(--ui-shadow-soft);
+    }
+
+    .stepper{
+      gap:7px;
+      margin-bottom:18px;
+      padding:6px;
+      overflow:visible;
+      border:1px solid rgba(199,216,226,.8);
+      border-radius:16px;
+      background:rgba(255,255,255,.9);
+      box-shadow:var(--ui-shadow-soft);
+    }
+    .stepper li{
+      min-height:42px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:9px 6px;
+      border:0;
+      border-radius:10px;
+      background:transparent;
+      color:#667987;
+      font-size:11.5px;
+      font-weight:650;
+      transition:background .18s ease,color .18s ease,box-shadow .18s ease,transform .18s ease;
+    }
+    .stepper li:hover{background:#F0F7FB;color:var(--navy);}
+    .stepper li .num{
+      display:inline-grid;
+      place-items:center;
+      flex:0 0 21px;
+      width:21px;
+      height:21px;
+      margin-right:6px;
+      line-height:1;
+      background:#EAF1F5;
+      color:#647986;
+      font-size:10px;
+    }
+    .stepper li.active{
+      background:linear-gradient(135deg,#087AAF,#0B91C7);
+      color:#fff;
+      box-shadow:0 7px 16px rgba(8,126,186,.2);
+      transform:translateY(-1px);
+    }
+    .stepper li.active .num{background:#fff;color:#087AAF;}
+    .stepper li.done{color:#277255;background:#F0F9F5;}
+    .stepper li.done .num{background:#209062;color:#fff;}
+
+    .card{
+      padding:25px 27px;
+      margin-bottom:18px;
+      border:1px solid rgba(199,216,226,.86);
+      border-radius:18px;
+      box-shadow:var(--ui-shadow);
+    }
+    .card h2{
+      margin-bottom:5px;
+      color:#064F77;
+      font-size:18px;
+      letter-spacing:-.025em;
+    }
+    .card .sub{
+      margin-bottom:19px;
+      color:#687B88;
+      font-size:12.5px;
+      line-height:1.55;
+    }
+
+    label{
+      margin-bottom:6px;
+      color:#324857;
+      font-size:12px;
+      font-weight:750;
+    }
+    input[type=text],input[type=number],select{
+      min-height:43px;
+      padding:9px 11px;
+      border:1px solid #CAD8E1;
+      border-radius:10px;
+      background:#FBFDFE;
+      color:#193342;
+      transition:border-color .16s ease,box-shadow .16s ease,background .16s ease;
+    }
+    input[type=text]:hover,input[type=number]:hover,select:hover{border-color:#9FBBCB;background:#fff;}
+    input:focus,select:focus{
+      outline:none;
+      border-color:#1C9ACD;
+      background:#fff;
+      box-shadow:var(--ui-focus);
+    }
+    input[type=checkbox],input[type=radio]{accent-color:#0784BD;}
+    .field{margin-bottom:14px;}
+    .field .hint{margin-top:6px;color:#6C7E89;font-size:11px;line-height:1.45;}
+
+    .choice-row{gap:14px;}
+    .choice{
+      position:relative;
+      min-height:168px;
+      padding:19px 18px;
+      border:1px solid #D3E1E9;
+      border-radius:15px;
+      background:linear-gradient(180deg,#FFF 0%,#FBFDFE 100%);
+      box-shadow:0 5px 16px rgba(35,72,96,.045);
+      transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,background .18s ease;
+    }
+    .choice:hover{
+      transform:translateY(-2px);
+      border-color:#82BED7;
+      box-shadow:0 12px 24px rgba(35,72,96,.09);
+    }
+    .choice.selected{
+      border:1.5px solid #1198CE;
+      background:linear-gradient(145deg,#F3FBFE 0%,#EAF7FC 100%);
+      box-shadow:0 0 0 3px rgba(17,152,206,.1),0 12px 26px rgba(35,72,96,.08);
+    }
+    .choice.selected::after{
+      content:"✓";
+      position:absolute;
+      top:14px;
+      right:14px;
+      display:grid;
+      place-items:center;
+      width:24px;
+      height:24px;
+      border-radius:50%;
+      background:#0A8FC5;
+      color:#fff;
+      font-size:13px;
+      font-weight:900;
+    }
+    .choice h3{margin-bottom:8px;color:#164B67;font-size:14px;}
+    .choice p{color:#647987;line-height:1.55;}
+    .choice .tag{
+      margin-bottom:10px;
+      padding:3px 8px;
+      background:#E7F5FB;
+      color:#0877AA;
+      border:1px solid #C7E8F5;
+      font-size:9.5px;
+    }
+
+    .btn{
+      height:43px;
+      padding:0 17px;
+      border:1px solid #087EB6;
+      border-radius:10px;
+      background:#087EB6;
+      box-shadow:0 5px 13px rgba(8,126,182,.17);
+      font-size:13px;
+      font-weight:750;
+      transition:transform .15s ease,box-shadow .15s ease,background .15s ease,border-color .15s ease;
+    }
+    .btn:hover{
+      transform:translateY(-1px);
+      background:#066E9F;
+      border-color:#066E9F;
+      box-shadow:0 8px 17px rgba(8,126,182,.21);
+    }
+    .btn:active{transform:translateY(0);box-shadow:0 3px 8px rgba(8,126,182,.14);}
+    .btn.secondary{background:#fff;color:#086F9F;border-color:#9CC6D9;box-shadow:none;}
+    .btn.secondary:hover{background:#F2FAFD;border-color:#6BAFCB;}
+    .btn.ghost{background:#fff;color:#516875;border-color:#CBD8DF;box-shadow:none;}
+    .btn.ghost:hover{background:#F5F8FA;border-color:#AEBFC9;color:#344D5C;}
+    .btn.danger{background:#fff;color:#B9362D;border-color:#E3AAA6;box-shadow:none;}
+    .btn.danger:hover{background:#FFF3F1;border-color:#D77F79;}
+    .btn.small{height:36px;border-radius:9px;}
+    .btn-icon-svg{width:17px;height:17px;}
+
+    table{
+      border-collapse:separate;
+      border-spacing:0;
+      overflow:hidden;
+      border:1px solid var(--ui-border);
+      border-radius:11px;
+      background:#fff;
+      font-size:12.5px;
+    }
+    th,td{
+      border:0;
+      border-right:1px solid #E0E9EE;
+      border-bottom:1px solid #E0E9EE;
+      padding:9px 10px;
+    }
+    tr > :last-child{border-right:0;}
+    tbody:last-child tr:last-child td,tfoot tr:last-child td{border-bottom:0;}
+    th{
+      background:#EDF7FB;
+      color:#165777;
+      font-size:11.5px;
+      font-weight:800;
+    }
+    tbody tr{transition:background .12s ease;}
+    tbody tr:hover{background:#F8FBFD;}
+    tfoot td{background:#F2F8FB;}
+
+    .metric{
+      position:relative;
+      overflow:hidden;
+      padding:18px 20px;
+      border:1px solid #D6E7EF;
+      border-radius:15px;
+      background:linear-gradient(145deg,#FFF 0%,#F0F9FD 100%);
+      box-shadow:0 6px 18px rgba(35,72,96,.05);
+    }
+    .metric::after{
+      content:"";
+      position:absolute;
+      width:90px;
+      height:90px;
+      right:-38px;
+      bottom:-52px;
+      border:14px solid rgba(24,164,216,.08);
+      border-radius:50%;
+    }
+    .metric .label{color:#647A88;font-size:11.5px;}
+    .metric .value{margin-top:5px;color:#075985;font-size:28px;letter-spacing:-.035em;}
+
+    .formula-box{
+      border:1px solid #DDE6EB;
+      border-radius:11px;
+      background:#F7F9FA;
+      color:#314651;
+    }
+    .note{
+      padding:11px 13px;
+      border:1px solid #F1D798;
+      border-left:4px solid #DCA82B;
+      border-radius:9px;
+      background:#FFF9E9;
+    }
+    .note.danger{border-color:#EEC4C0;border-left-color:var(--danger);background:#FFF2F0;}
+    .note.ok{border-color:#BFE1CF;border-left-color:var(--ok);background:#EEF9F3;}
+
+    .zone-card{
+      padding:16px 17px;
+      border:1px solid #D7E3EA;
+      border-radius:14px;
+      background:#FBFDFE;
+      box-shadow:0 4px 14px rgba(35,72,96,.04);
+    }
+    .zone-card-head input.zone-name,.zone-card-head select,.zone-sign button{
+      border-color:#CAD8E1;
+      border-radius:9px;
+      background:#fff;
+    }
+    .zone-sign button.active{background:#087EB6;border-color:#087EB6;}
+
+    .info-toggle{
+      width:18px;
+      height:18px;
+      border-color:#79B9D5;
+      color:#087EB6;
+    }
+    .info-box{
+      padding:10px 12px;
+      border-color:#CFE4EE;
+      border-radius:10px;
+      background:#F2F9FC;
+    }
+
+    .fan-advanced{
+      border-color:#BCD7E4;
+      border-radius:10px;
+      background:#FBFDFE;
+    }
+    .fan-advanced-row td{background:#F7FAFC;}
+    .language-options{
+      padding:11px 13px;
+      border-color:#CFE2EB;
+      border-radius:12px;
+      background:#F2F9FC;
+    }
+    .language-grid label{
+      border-color:#D4E2E9;
+      border-radius:9px;
+      transition:border-color .15s ease,background .15s ease;
+    }
+    .language-grid label:hover{border-color:#8FBED2;background:#F9FCFE;}
+
+    details.guidance-group{
+      border-color:#D5E3EA;
+      border-radius:12px;
+      box-shadow:0 3px 10px rgba(35,72,96,.035);
+    }
+    details.guidance-group summary{padding:11px 13px;background:#F7FBFD;}
+    details.guidance-group[open] summary{background:#EDF7FB;}
+
+    .permit-check{
+      border-color:#D7E5EC;
+      border-radius:11px;
+      background:#FBFDFE;
+    }
+    .permit-check .check-num{background:#0A87BD;}
+    .translated-report{border-top-color:#7EAFC7;}
+
+    @media (prefers-reduced-motion:reduce){
+      *,*::before,*::after{scroll-behavior:auto !important;transition:none !important;}
+    }
+  }
+
+  @media screen and (max-width:760px){
+    body{background:#F4F8FA;}
+    header.app-header{
+      min-height:auto;
+      padding:19px 16px 17px;
+    }
+    header.app-header::before{height:20px;margin-bottom:7px;font-size:8px;}
+    header.app-header h1{font-size:18px;}
+    header.app-header p{font-size:10.5px;}
+    .credit{
+      position:static;
+      display:inline-flex;
+      align-items:center;
+      width:auto;
+      max-width:100%;
+      margin:9px 0 0;
+      padding:3px 7px;
+      top:auto;
+      right:auto;
+      text-align:left;
+      white-space:nowrap;
+    }
+    .warn-banner{justify-content:flex-start;padding:10px 14px;}
+    details.ref-panel summary{padding:11px 14px;}
+    details.ref-panel summary::after{display:none;}
+    .shell{padding:16px 10px 48px;}
+    .session-bar{padding:13px;border-radius:14px;}
+    .stepper{
+      gap:5px;
+      padding:5px;
+      overflow-x:auto;
+      border-radius:14px;
+    }
+    .stepper li{min-width:86px;min-height:40px;padding:8px 9px;}
+    .stepper li.active{transform:none;}
+    .card{padding:18px 14px;border-radius:15px;box-shadow:0 8px 22px rgba(35,72,96,.07);}
+    .card h2{font-size:16px;}
+    .choice{min-height:auto;padding:16px;border-radius:13px;}
+    .choice:hover{transform:none;}
+    .btn{height:48px;border-radius:11px;}
+    table.responsive-table tbody tr{
+      border-color:#D6E3EA;
+      border-radius:12px;
+      box-shadow:0 4px 12px rgba(35,72,96,.04);
+    }
+    table.responsive-table td{border-bottom:1px solid #E7EEF2 !important;}
+  }
+
+  @media screen and (max-width:430px){
+    .shell{padding-left:7px;padding-right:7px;}
+    .card{padding-left:11px;padding-right:11px;}
+    .metric{padding:15px 16px;}
+    .metric .value{font-size:24px;}
+  }
+</style>
+<style id="print-design-v02">
+  @media screen{
+    .report-section h3{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .report-section .section-num,
+    .translated-report h3 > span{
+      display:inline-grid;
+      place-items:center;
+      flex:0 0 23px;
+      width:23px;
+      height:23px;
+      border-radius:7px;
+      background:#E8F5FA;
+      color:#087EB6;
+      font-size:11px;
+      font-weight:900;
+    }
+    .print-overview-grid,
+    .translated-overview-grid{
+      display:grid;
+      grid-template-columns:repeat(12,minmax(0,1fr));
+      gap:8px;
+    }
+    .print-overview-item,
+    .translated-overview-grid .kv{
+      display:block;
+      margin:0;
+      padding:10px 12px;
+      border:1px solid #D9E6EC;
+      border-radius:10px;
+      background:#FAFCFD;
+    }
+    .print-overview-grid .date,
+    .translated-overview-grid .date{grid-column:span 3;}
+    .print-overview-grid .space,
+    .translated-overview-grid .space{grid-column:span 6;}
+    .print-overview-grid .workers,
+    .translated-overview-grid .workers{grid-column:span 3;}
+    .print-overview-grid .method,
+    .translated-overview-grid .method{grid-column:span 5;}
+    .print-overview-grid .volume,
+    .translated-overview-grid .volume{grid-column:span 3;}
+    .print-overview-grid .criteria,
+    .translated-overview-grid .criteria{grid-column:span 4;}
+    .print-overview-item span,
+    .translated-overview-grid .kv div:first-child{
+      display:block;
+      margin-bottom:3px;
+      color:#687C89;
+      font-size:10.5px;
+      font-weight:700;
+    }
+    .print-overview-item b,
+    .translated-overview-grid .kv div:last-child{color:#183B4D;font-size:12.5px;font-weight:750;}
+    .print-key-metrics,
+    .translated-key-metrics{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:8px;
+      margin:8px 0 12px;
+    }
+    .print-key-metrics > div,
+    .translated-key-metrics > div{
+      padding:10px 11px;
+      border:1px solid #D5E5EC;
+      border-radius:10px;
+      background:#F5FAFC;
+    }
+    .print-key-metrics span,
+    .translated-key-metrics span{display:block;color:#657A87;font-size:10px;font-weight:700;}
+    .print-key-metrics strong{color:#075985;font-size:18px;letter-spacing:-.025em;}
+    .print-key-metrics small{margin-left:3px;color:#6A7D89;font-size:9.5px;}
+    .translated-key-metrics b{display:block;margin-top:3px;color:#075985;}
+    .print-key-metrics .ok,.translated-key-metrics .ok{border-color:#B8DFCB;background:#F0FAF5;}
+    .print-key-metrics .bad,.translated-key-metrics .bad{border-color:#E9BCB7;background:#FFF4F2;}
+    .print-key-metrics .bad strong,.translated-key-metrics .bad b{color:#B9362D;}
+    .translated-title-main small{
+      display:block;
+      margin-bottom:2px;
+      color:#6A8390;
+      font-size:8.5px;
+      font-weight:800;
+      letter-spacing:.08em;
+    }
+    .print-document-footer,.translated-document-footer{display:none;}
+    @media (max-width:760px){
+      .print-overview-grid,.translated-overview-grid{grid-template-columns:1fr;}
+      .print-overview-grid > *,.translated-overview-grid > *{grid-column:auto !important;}
+      .print-key-metrics,.translated-key-metrics{grid-template-columns:1fr 1fr;}
+    }
+  }
+
+  @page{
+    size:A4;
+    margin:12mm 12mm 13mm;
+  }
+
+  @media print{
+    *{
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
+    }
+    html,body{
+      background:#fff !important;
+      color:#172B3A;
+      font-family:"Malgun Gothic","Noto Sans KR","Microsoft YaHei","Yu Gothic","Leelawadee UI","Myanmar Text","Khmer UI",Arial,sans-serif;
+    }
+    .report{
+      color:#172B3A;
+      font-size:9.2px;
+      line-height:1.22;
+    }
+
+    .print-title{
+      min-height:42px;
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:14px;
+      margin:0 0 5px;
+      padding:5px 0 6px;
+      border-top:4px solid #075985;
+      border-bottom:1px solid #8DAFBE;
+      color:#173747;
+    }
+    .pt-title-wrap{display:block;}
+    .pt-title-wrap strong{
+      display:block;
+      font-size:15px;
+      line-height:1.15;
+      letter-spacing:-.025em;
+    }
+    .pt-kicker{
+      display:block;
+      margin-bottom:3px;
+      color:#547888;
+      font-size:6.6px;
+      font-weight:800;
+      letter-spacing:.12em;
+    }
+    .print-title .pt-sub{
+      display:grid;
+      grid-template-columns:auto auto;
+      gap:2px 8px;
+      align-items:end;
+      max-width:56%;
+      color:#4E6976;
+      font-size:7px;
+      line-height:1.15;
+      text-align:right;
+    }
+    .print-title .pt-sub b{
+      grid-column:1 / -1;
+      justify-self:end;
+      padding:2px 6px;
+      border:1px solid #D9BD72;
+      border-radius:999px;
+      background:#FFF8E5;
+      color:#7B590B;
+      font-size:6.4px;
+      white-space:nowrap;
+    }
+
+    .report-section{margin:0;padding:0;}
+    .report-tail{
+      break-inside:avoid;
+      page-break-inside:avoid;
+    }
+    .report-section h3{
+      display:flex;
+      align-items:center;
+      gap:5px;
+      margin:3px 0 2px;
+      padding:0 0 2px;
+      border:0;
+      border-bottom:1px solid #9BB8C5;
+      color:#164D67;
+      font-size:9.4px;
+      line-height:1.1;
+      break-after:avoid;
+      page-break-after:avoid;
+    }
+    .report-section .section-num{
+      display:inline-grid;
+      place-items:center;
+      flex:0 0 14px;
+      width:14px;
+      height:14px;
+      border-radius:4px;
+      background:#075985;
+      color:#fff;
+      font-size:6.6px;
+      font-weight:900;
+    }
+
+    .print-overview-grid{
+      display:grid;
+      grid-template-columns:repeat(12,minmax(0,1fr));
+      gap:2px 3px;
+      margin-bottom:2px;
+    }
+    .print-overview-item{
+      min-height:25px;
+      padding:3px 5px;
+      border:1px solid #D5E1E7;
+      border-radius:3px;
+      background:#F8FBFC;
+    }
+    .print-overview-grid .date{grid-column:span 3;}
+    .print-overview-grid .space{grid-column:span 6;}
+    .print-overview-grid .workers{grid-column:span 3;}
+    .print-overview-grid .method{grid-column:span 5;}
+    .print-overview-grid .volume{grid-column:span 3;}
+    .print-overview-grid .criteria{grid-column:span 4;}
+    .print-overview-item span{
+      display:block;
+      margin-bottom:1px;
+      color:#687C87;
+      font-size:6.8px;
+      font-weight:700;
+    }
+    .print-overview-item b{
+      display:block;
+      color:#193D4E;
+      font-size:7.8px;
+      line-height:1.15;
+      overflow-wrap:anywhere;
+    }
+    .print-overview-item.criteria b{font-size:7.2px;}
+
+    .print-key-metrics{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:3px;
+      margin:2px 0 3px;
+    }
+    .print-key-metrics > div{
+      min-height:31px;
+      padding:3px 5px;
+      border:1px solid #C9DDE6;
+      border-radius:3px;
+      background:#F3F9FB;
+    }
+    .print-key-metrics span{
+      display:block;
+      margin-bottom:1px;
+      color:#607681;
+      font-size:6.2px;
+      font-weight:700;
+    }
+    .print-key-metrics strong{
+      color:#075985;
+      font-size:10.5px;
+      letter-spacing:-.02em;
+    }
+    .print-key-metrics small{margin-left:2px;color:#687B85;font-size:5.8px;}
+    .print-key-metrics .print-status strong{font-size:9.5px;}
+    .print-key-metrics .print-status small{display:block;margin:0;}
+    .print-key-metrics .ok{border-color:#ADD7C1;background:#F0F8F4;}
+    .print-key-metrics .bad{border-color:#E4AAA5;background:#FFF2F0;}
+    .print-key-metrics .bad strong{color:#B3261E;}
+
+    .report table{
+      width:100%;
+      margin:2px 0 3px;
+      border:1px solid #AFC5CF;
+      border-radius:0;
+      border-collapse:collapse;
+      background:#fff;
+      color:#213E4C;
+      font-size:7.5px;
+      line-height:1.14;
+    }
+    .report table th,.report table td{
+      border:1px solid #CBD8DE;
+      padding:2px 3px;
+      vertical-align:middle;
+    }
+    .report table th{
+      background:#EAF3F7;
+      color:#164D67;
+      font-size:7.1px;
+      font-weight:800;
+    }
+    .report table tbody tr:hover{background:transparent;}
+    .report-equipment-table td:nth-child(n+2){text-align:center;}
+
+    .report .kv{
+      display:grid;
+      grid-template-columns:116px 1fr;
+      gap:2px 7px;
+      margin:0;
+      min-height:13px;
+      align-items:center;
+    }
+    .report .kv div:nth-child(odd){color:#617680;font-size:6.9px;font-weight:700;}
+    .report .kv div:nth-child(even){color:#203E4D;font-weight:650;overflow-wrap:anywhere;}
+    .report .note{
+      margin:2px 0;
+      padding:3px 5px;
+      border:1px solid #D5A4A0;
+      border-left:3px solid #B3261E;
+      border-radius:3px;
+      background:#FFF3F1;
+      color:#6F2621;
+      font-size:7.3px;
+      line-height:1.18;
+    }
+    .report .hint{margin:1px 0 2px;color:#5F717A;font-size:6.8px;line-height:1.17;}
+
+    .permit-checklist{
+      grid-template-columns:1fr 1fr;
+      gap:2px 4px;
+      margin:2px 0;
+    }
+    .permit-check{
+      min-height:68px;
+      padding:4px 5px;
+      border:1px solid #C8D9E0;
+      border-radius:4px;
+      background:#FAFCFD;
+      font-size:7.2px;
+      line-height:1.17;
+    }
+    .permit-check-head{
+      grid-template-columns:14px 1fr;
+      gap:4px;
+      margin-bottom:1px;
+      padding-bottom:2px;
+      border-bottom:1px solid #D9E4E9;
+    }
+    .permit-check .check-num{
+      width:14px;
+      height:14px;
+      line-height:14px;
+      background:#075985;
+      font-size:6.5px;
+    }
+    .permit-check-title b{color:#164D67;font-size:7.6px;}
+    .permit-check-title small{color:#657A84;font-size:6.5px;line-height:1.12;}
+    .permit-subcheck{grid-template-columns:66px 1fr;gap:3px;padding:2px 0;}
+    .permit-subcheck + .permit-subcheck{border-top:1px dashed #D7E2E7;}
+    .permit-subcheck b{color:#164D67;font-size:6.9px;}
+
+    .report-source-table{table-layout:fixed;font-size:7.1px !important;}
+    .report-source-table tbody tr{height:23px !important;}
+    .report-source-table td{height:23px !important;padding:1px 3px !important;}
+    .report-source-table td:first-child{
+      width:20%;
+      background:#F5F9FA;
+      color:#164D67;
+      white-space:normal;
+      text-align:center;
+    }
+
+    .report table.sig-table{margin-top:2px;}
+    .report table.sig-table thead th{height:17px;padding:1px 3px !important;}
+    .report table.sig-table tbody tr{height:30px !important;}
+    .report table.sig-table tbody td{
+      height:30px !important;
+      padding:0 4px !important;
+      line-height:30px;
+    }
+    .report table.sig-table tbody td:first-child{
+      background:#F7FAFB;
+      color:#164D67;
+      font-weight:800;
+    }
+
+    .print-document-footer{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      margin-top:3px;
+      padding-top:3px;
+      border-top:1px solid #AFC5CF;
+      color:#6A7C85;
+      font-size:5.8px;
+    }
+
+    .translated-report{
+      page-break-before:always;
+      break-before:page;
+      margin:0;
+      padding:0;
+      border:0;
+      color:#172B3A;
+      font-family:"Segoe UI","Noto Sans","Malgun Gothic","Microsoft YaHei","Yu Gothic","Leelawadee UI","Myanmar Text","Khmer UI",Arial,sans-serif;
+      font-size:10px;
+      line-height:1.32;
+      overflow-wrap:anywhere;
+      word-break:normal;
+      hyphens:auto;
+    }
+    .translated-title{
+      min-height:45px;
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+      margin:0 0 4px;
+      padding:5px 0 6px;
+      border-top:4px solid #075985;
+      border-bottom:1px solid #8DAFBE;
+      color:#173747;
+      font-size:14.5px;
+      line-height:1.2;
+    }
+    .translated-title-main{display:block;max-width:72%;}
+    .translated-title-main > small{
+      display:block;
+      margin-bottom:3px;
+      color:#547888;
+      font-size:6.8px;
+      font-weight:800;
+      letter-spacing:.11em;
+    }
+    .translated-title > small{
+      max-width:30%;
+      color:#54707D;
+      font-size:7.2px;
+      line-height:1.3;
+      text-align:right;
+    }
+    .translated-title > small b{color:#164D67;font-size:7.7px;}
+    .translated-disclaimer{
+      margin:0 0 3px;
+      padding:3px 5px;
+      border:1px solid #E2C779;
+      border-radius:3px;
+      background:#FFF9E8;
+      color:#704F08;
+      font-size:8px;
+      line-height:1.32;
+    }
+    .translated-report h3{
+      display:flex;
+      align-items:center;
+      gap:5px;
+      margin:5px 0 3px;
+      padding:0 0 2px;
+      border:0;
+      border-bottom:1px solid #9BB8C5;
+      color:#164D67;
+      font-size:10px;
+      line-height:1.2;
+      break-after:avoid;
+      page-break-after:avoid;
+    }
+    .translated-report h3 > span{
+      display:inline-grid;
+      place-items:center;
+      flex:0 0 14px;
+      width:14px;
+      height:14px;
+      border-radius:4px;
+      background:#075985;
+      color:#fff;
+      font-size:6.5px;
+      font-weight:900;
+    }
+    .translated-overview-grid{
+      display:grid;
+      grid-template-columns:repeat(12,minmax(0,1fr));
+      gap:2px 3px;
+      margin-bottom:2px;
+    }
+    .translated-overview-grid .kv{
+      display:block;
+      min-height:31px;
+      margin:0;
+      padding:3px 5px;
+      border:1px solid #D5E1E7;
+      border-radius:3px;
+      background:#F8FBFC;
+    }
+    .translated-overview-grid .date{grid-column:span 3;}
+    .translated-overview-grid .space{grid-column:span 6;}
+    .translated-overview-grid .workers{grid-column:span 3;}
+    .translated-overview-grid .method{grid-column:span 5;}
+    .translated-overview-grid .volume{grid-column:span 3;}
+    .translated-overview-grid .criteria{grid-column:span 4;}
+    .translated-overview-grid .kv div:first-child{
+      display:block;
+      margin-bottom:1px;
+      color:#687C87;
+      font-size:7.3px;
+      font-weight:700;
+    }
+    .translated-overview-grid .kv div:last-child{
+      color:#193D4E;
+      font-size:8.6px;
+      font-weight:700;
+      line-height:1.3;
+    }
+    .translated-overview-grid .criteria div:last-child{font-size:7.8px;}
+    .translated-key-metrics{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:3px;
+      margin:2px 0 3px;
+    }
+    .translated-key-metrics > div{
+      min-height:34px;
+      padding:4px 5px;
+      border:1px solid #C9DDE6;
+      border-radius:3px;
+      background:#F3F9FB;
+    }
+    .translated-key-metrics span{display:block;color:#607681;font-size:7.2px;font-weight:700;}
+    .translated-key-metrics b{display:block;margin-top:2px;color:#075985;font-size:9.5px;}
+    .translated-key-metrics .ok{border-color:#ADD7C1;background:#F0F8F4;}
+    .translated-key-metrics .bad{border-color:#E4AAA5;background:#FFF2F0;}
+    .translated-key-metrics .bad b{color:#B3261E;}
+    .translated-equipment-table{table-layout:fixed;}
+    .report .translated-equipment-table{font-size:8.2px;line-height:1.34;}
+    .report .translated-equipment-table th,
+    .report .translated-equipment-table td{padding:3px 4px;}
+    .translated-equipment-table th:nth-child(1){width:21%;}
+    .translated-equipment-table th:nth-child(2){width:14%;}
+    .translated-equipment-table th:nth-child(3){width:24%;}
+    .translated-equipment-table th:nth-child(4){width:11%;}
+    .translated-equipment-table th:nth-child(5){width:17%;}
+    .translated-equipment-table th:nth-child(6){width:13%;}
+    .translated-checks{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:3px 4px;
+      margin:2px 0;
+    }
+    .translated-check{
+      min-height:58px;
+      padding:5px 6px;
+      border:1px solid #CADCE4;
+      border-radius:4px;
+      background:#FAFCFD;
+      color:#324D5A;
+      font-size:8.4px;
+      line-height:1.36;
+    }
+    .translated-check b{margin-bottom:3px;color:#164D67;font-size:8.6px;}
+    .translated-signature-table{table-layout:fixed;}
+    .report .translated-signature-table{font-size:8.2px;line-height:1.34;}
+    .report .translated-signature-table thead th{height:22px !important;padding:3px 4px !important;}
+    .report .translated-signature-table tbody tr{height:38px !important;}
+    .report .translated-signature-table tbody td{
+      height:38px !important;
+      padding:4px !important;
+      line-height:1.3;
+    }
+    .translated-document-footer{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      margin-top:3px;
+      padding-top:3px;
+      border-top:1px solid #AFC5CF;
+      color:#6A7C85;
+      font-size:5.8px;
+    }
+    .translated-report[lang="zh"],
+    .translated-report[lang="ja"]{
+      font-family:"Microsoft YaHei","Yu Gothic","Malgun Gothic",sans-serif;
+      line-break:strict;
+      word-break:normal;
+    }
+    .translated-report[lang="en"],
+    .translated-report[lang="vi"],
+    .translated-report[lang="id"],
+    .translated-report[lang="mn"]{
+      font-family:"Segoe UI","Arial","Malgun Gothic",sans-serif;
+    }
+    .translated-report[lang="th"]{font-family:"Leelawadee UI","Tahoma","Segoe UI",sans-serif;}
+    .translated-report[lang="my"]{font-family:"Myanmar Text","Nirmala UI","Segoe UI",sans-serif;}
+    .translated-report[lang="km"]{font-family:"Khmer UI","Nirmala UI","Segoe UI",sans-serif;}
+    .translated-report[lang="th"],
+    .translated-report[lang="my"],
+    .translated-report[lang="km"]{
+      line-height:1.48;
+    }
+    .translated-report[lang="th"] .translated-title,
+    .translated-report[lang="my"] .translated-title{
+      font-size:13px;
+      line-height:1.4;
+    }
+    .translated-report[lang="km"] .translated-title{
+      font-size:11.8px;
+      line-height:1.5;
+    }
+    .translated-report[lang="th"] table,
+    .translated-report[lang="my"] table,
+    .translated-report[lang="km"] table,
+    .translated-report[lang="th"] .translated-check,
+    .translated-report[lang="my"] .translated-check,
+    .translated-report[lang="km"] .translated-check,
+    .translated-report[lang="th"] .translated-disclaimer,
+    .translated-report[lang="my"] .translated-disclaimer,
+    .translated-report[lang="km"] .translated-disclaimer{
+      line-height:1.5;
+    }
+    .translated-report[lang="km"] .translated-overview-grid .kv,
+    .translated-report[lang="my"] .translated-overview-grid .kv{
+      min-height:38px;
+    }
+    .translated-report[lang="km"] .translated-check,
+    .translated-report[lang="my"] .translated-check{
+      min-height:68px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>밀폐공간 환기량 산정 · 송배풍기 매칭 도구</h1>
+  <p>작업 전 최초 급기량 / 작업 중 유지환기량 산정 및 보유 장비 매칭 — v0.2</p>
+  <span class="credit no-print">Produced by H.S.H</span>
+</header>
+<div class="warn-banner">
+  <b>⚠ 안전 고지</b>
+  <span>본 도구의 산출값은 <b>설계·계획 참고용</b>입니다. 계산값만으로 출입을 허가하지 마십시오. 작업 시작·재개 전에는 지정된 측정자가 산소·유해가스 농도를 측정·평가하고, 작업 중에도 적정공기 상태를 확인해야 합니다. <b>측정결과가 부적정하면 진입 금지·환기·보호구 등 후속조치가 우선</b>입니다.</span>
+</div>
+<details class="ref-panel">
+  <summary>📋 작업허가자·안전관리자 필수 확인사항과 법적 기준 — 클릭하여 펼치기</summary>
+  <div class="ref-panel-body">
+    <table class="wide">
+      <thead><tr><th>항목</th><th>허용·관리 기준</th><th>근거 성격</th></tr></thead>
+      <tbody>
+        <tr><td>산소농도</td><td>18% 이상 23.5% 미만 (18% 미만 = 산소결핍)</td><td>법정(제618조)</td></tr>
+        <tr><td>이산화탄소(CO₂)</td><td>1.5% 미만</td><td>법정(제618조)</td></tr>
+        <tr><td>일산화탄소(CO)</td><td>30ppm 미만</td><td>법정(제618조)</td></tr>
+        <tr><td>황화수소(H₂S)</td><td>10ppm 미만</td><td>법정(제618조)</td></tr>
+        <tr><td>가연성가스</td><td>폭발하한계(LEL)의 10% 미만</td><td>KOSHA·작업허가 관리기준</td></tr>
+        <tr><td>그 밖의 유해물질</td><td>MSDS·노출기준·사업장 기준에 따라 물질별 측정</td><td>작업·공정별 추가 확인</td></tr>
+      </tbody>
+    </table>
+    <p class="hint"><b>센서 구성을 반드시 확인하십시오.</b> 휴대용 측정기 한 대가 위 모든 항목을 측정한다고 가정하면 안 됩니다. 작업 중 발생·유입 가능한 물질을 먼저 파악하고, 해당 센서 또는 별도 측정기를 준비해야 합니다. LEL 10% 미만은 제618조의 법정 적정공기 4항목과 구분되는 화재·폭발 예방 관리기준입니다.</p>
+
+    <div class="guidance-grid">
+      <details class="guidance-group">
+        <summary>① 작업허가 전 확인·게시 <span class="legal-tag">제619조</span></summary>
+        <div class="guidance-body">
+          <ul>
+            <li>작업 일시·기간·장소·내용과 밀폐공간의 위치·특이사항</li>
+            <li>관리감독자·작업자·외부 감시인의 지정 및 역할</li>
+            <li>산소·유해가스 측정결과와 기준 초과 시 후속조치</li>
+            <li>불활성가스·유해가스의 누출·유입·발생 가능성과 차단조치</li>
+            <li>착용할 보호구, 비상연락체계, 구조방법</li>
+            <li>확인 내용을 작업 종료 시까지 출입구에 게시</li>
+          </ul>
+          <p class="source-note">허가서 서명만으로 끝나는 절차가 아니라, 현장 상태와 후속조치를 확인한 뒤 출입을 승인하는 절차입니다.</p>
+        </div>
+      </details>
+
+      <details class="guidance-group">
+        <summary>② 농도 측정·평가·보존 <span class="legal-tag">제619조의2</span></summary>
+        <div class="guidance-body">
+          <ul>
+            <li>작업 시작 전과 일시 중단 후 재개 전에 다시 측정·평가</li>
+            <li>측정·평가 지식과 실무경험이 있는 사람을 지정하고 측정장비 지급</li>
+            <li>상부·중부·하부, 작업 위치와 사각지대 등 대표 지점을 측정</li>
+            <li>측정자, 일시, 장소, 결과와 평가 내용을 기록하여 3년간 보존</li>
+            <li>부적정 시 진입 금지 후 환기·보호구 등 필요한 조치 및 재측정</li>
+          </ul>
+          <p class="source-note">측정기는 사용 전 교정·범프테스트 상태, 배터리, 센서 유효기간과 대상가스 감지 가능 여부를 확인합니다.</p>
+        </div>
+      </details>
+
+      <details class="guidance-group">
+        <summary>③ 격리·환기·작업 중 관리 <span class="legal-tag">제620~623조</span></summary>
+        <div class="guidance-body">
+          <ul>
+            <li>연결 배관의 유체·가스 유입 차단, 밸브 잠금·표지, 동력원 LOTO</li>
+            <li>작업 전 체적 10배 이상 급기 후 적정공기 확인, 작업 중 20회/h 이상 계속 환기</li>
+            <li>급·배기구를 떨어뜨려 단락류를 방지하고 작업자 호흡영역까지 신선한 공기 공급</li>
+            <li>환기팬·덕트의 용량, 정압, 손상·꺾임, 전원 상태와 방폭 적합성 확인</li>
+            <li>입·퇴장 인원 점검, 관계자 외 출입금지 표지, 외부 감시인과 상시 연락</li>
+            <li>제626조 상시환기 특례는 24시간 가동·월 1회 이상 점검·출입구 상시 게시 등 요건 충족 여부를 별도로 확인</li>
+          </ul>
+          <p class="source-note">10배·20회/h는 KOSHA GUIDE H-80-2021의 권장 최소기준이며, 법 제620조는 적정공기 상태가 유지되도록 작업 전·중 환기할 의무를 규정합니다.</p>
+        </div>
+      </details>
+
+      <details class="guidance-group">
+        <summary>④ 보호구·구조·작업중지 <span class="legal-tag">제624·625·639·640조</span></summary>
+        <div class="guidance-body">
+          <ul>
+            <li>추락 위험 시 안전대·구명줄과 안전한 부착설비 준비</li>
+            <li>공기호흡기·송기마스크, 사다리, 섬유로프, 삼각대 등 대피·구조장비 비치</li>
+            <li>질식·화재·폭발 우려 또는 경보 발생 시 즉시 작업중지·대피</li>
+            <li>보호구 없이 쓰러진 작업자를 따라 들어가는 구조행위 금지</li>
+            <li>비상연락·구조장비·호흡보호구·응급처치 훈련을 6개월마다 실시·기록</li>
+            <li>화기작업 병행 시 별도 허가, 가연물 제거, LEL 연속 확인과 화재감시</li>
+          </ul>
+          <p class="source-note">환기만으로 적정공기를 유지할 수 없거나 환기가 곤란한 경우에는 작업조건에 맞는 호흡용 보호구와 별도 통제가 필요합니다.</p>
+        </div>
+      </details>
+    </div>
+
+    <p class="hint"><b>기준 구분:</b> 제618조의 농도는 법정 적정공기 기준, 제619~625조 등은 법적 작업관리 의무, 체적 10배·20회/h와 LEL 10% 미만은 KOSHA·작업허가 관리기준, TLV·안전계수(K)는 MSDS와 사업장 위험성평가에 따라 정하는 값입니다. 기본값을 낮추는 경우에는 근거와 승인 절차를 별도로 확인하십시오.</p>
+    <p class="hint"><b>확인 기준:</b> 「산업안전보건기준에 관한 규칙」 2026.3.2 시행본과 KOSHA GUIDE H-80-2021을 기준으로 정리했습니다. 법령·기술지침·사업장 절차가 개정되면 최신 원문을 우선 적용하십시오.</p>
+  </div>
+</details>
+
+<div class="shell">
+
+  <div class="session-bar no-print">
+    <div class="field" style="max-width:320px;margin:0;">
+      <label style="margin-bottom:3px;">공간명 <span class="opt">(세션 저장 파일명에 사용, 선택)</span></label>
+      <input type="text" id="space-name" placeholder="예: 1호기 정화조 맨홀">
+    </div>
+    <div class="session-actions">
+      <button class="btn secondary" onclick="saveSessionToFile()"><svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> 이 공간 저장</button>
+      <label class="btn ghost" style="cursor:pointer;">
+        <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> 저장된 공간 불러오기
+        <input type="file" accept=".json" onchange="loadSessionFromFile(event)" style="display:none;">
+      </label>
+    </div>
+  </div>
+
+  <ul class="stepper" id="stepper"></ul>
+
+  <!-- ===================== STEP 1 ===================== -->
+  <div class="step" data-step="1">
+    <div class="card">
+      <h2>1단계 · 계산방식 선택</h2>
+      <p class="sub">밀폐공간의 특성에 맞는 환기량 산정 방식을 선택하십시오.</p>
+
+      <div class="choice-row">
+        <div class="choice" data-mode="A" onclick="selectMode('A')">
+          <span class="tag">체적배수법</span>
+          <h3>일반 밀폐공간</h3>
+          <p>지속적 오염물질 발생원이 특정되지 않는 경우 (단순 산소결핍 우려). 체적 대비 배수 기준으로 산정합니다.</p>
+        </div>
+        <div class="choice" data-mode="B" onclick="selectMode('B')">
+          <span class="tag">희석법 · 발생량 입력</span>
+          <h3>발생량을 아는 경우</h3>
+          <p>유해가스·유기화합물이 지속 발생하며, 시간당 사용량(발생량)을 파악할 수 있는 경우입니다.</p>
+        </div>
+        <div class="choice" data-mode="C" onclick="selectMode('C')">
+          <span class="tag">희석법 · 측정 역산</span>
+          <h3>발생량을 모르는 경우</h3>
+          <p>발생량을 특정할 수 없어, 송풍 후 일정시간 경과 시 농도를 측정하여 발생량을 역산합니다.</p>
+        </div>
+      </div>
+
+      <div class="note" style="margin-top:16px;">
+        어떤 방식을 선택해야 할지 확실하지 않다면, 우선 체적배수법으로 산정하고 실제 작업환경측정 결과에 따라 방식을 조정하는 것을 권장합니다.
+      </div>
+    </div>
+    <div class="nav-row"><span></span><button class="btn" onclick="goStep(2)">다음 : 체적 산출 →</button></div>
+  </div>
+
+  <!-- ===================== STEP 2 ===================== -->
+  <div class="step" data-step="2">
+    <div class="card">
+      <h2>2단계 · 공간 체적 산출</h2>
+      <p class="sub">구역을 추가하면서 체적을 합산합니다. 5단계의 송배풍기 목록에 장비를 추가하는 것과 동일한 방식입니다.</p>
+
+      <div id="zones-list"></div>
+
+      <div style="display:flex;gap:8px;margin:10px 0 20px;flex-wrap:wrap;">
+        <button class="btn secondary" onclick="addZone()">+ 구역 추가</button>
+      </div>
+
+      <div class="field" style="max-width:380px;">
+        <label>유효공간율(%) <span class="opt">보정계수, 기본 100%</span>
+          <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+        </label>
+        <div class="info-box" hidden>
+          배관·구조물 등 내부 설비가 부피를 차지해 실제 공기가 채워지는 체적이 계산값보다 작은 경우에만 낮추십시오. 실측이나 도면 근거 없이 "복잡해 보인다"는 이유만으로 낮추면 필요환기량이 과소산정되어 위험할 수 있습니다. <b>확실하지 않으면 100%를 유지하십시오.</b>
+        </div>
+        <input type="number" id="space-ratio" value="100" min="1" max="100" step="1" onchange="renderZones()">
+      </div>
+
+      <div class="metric" style="margin-top:14px;max-width:340px;">
+        <div class="label">산출된 실내 체적 (V) — 유효공간율 반영</div>
+        <div class="value" id="volume-result">0.00 <span class="unit">㎥</span></div>
+      </div>
+    </div>
+    <div class="nav-row">
+      <button class="btn secondary" onclick="goStep(1)">← 이전</button>
+      <button class="btn" onclick="goStep(3)">다음 : 작업조건 입력 →</button>
+    </div>
+  </div>
+
+  <!-- ===================== STEP 3 ===================== -->
+  <div class="step" data-step="3">
+    <div class="card">
+      <h2>3단계 · 작업조건 입력</h2>
+      <p class="sub" id="step3-sub">-</p>
+
+      <div class="field" style="max-width:320px;">
+        <label>작업 인원수</label>
+        <input type="number" id="worker-count" min="0" step="1" placeholder="예: 3">
+        <div class="hint">※ 기록용 항목입니다. 아래 환기량 계산식에는 반영되지 않습니다.</div>
+      </div>
+
+      <!-- Mode A : 체적배수법 -->
+      <div id="mode-A-fields" class="mode-fields" style="display:none;">
+        <div class="grid cols-2">
+          <div class="field">
+            <label>최초 급기 배수 (체적의 몇 배) <span class="opt">최소 기준</span></label>
+            <input type="number" id="a-multiplier" value="10" min="0" step="0.5">
+            <div class="hint">기본값 <b>10배 이상</b> — KOSHA GUIDE H-80-2021(2021.12 개정) 9.1(1)항의 <b>최소 기준</b>입니다("10배 <u>이상</u>"). 2021년 개정 시 환기실험·CFD 결과를 반영해 5배→10배로 상향되었습니다. 법 조문(안전보건규칙 제620조)은 적정공기가 유지되도록 작업 전·중 환기할 의무를 규정하지만 구체적 배수는 정하지 않으며, 10배는 공단 기술지침의 권장 최소치입니다. <b>이 값보다 낮추면 가이드 기준 미달</b>이며, 사업장 판단으로 상향하는 것은 무방합니다.</div>
+          </div>
+          <div class="field">
+            <label>유지 환기횟수 (회/h) <span class="opt">최소 기준</span></label>
+            <input type="number" id="a-ach" value="20" min="0" step="1">
+            <div class="hint">기본값 <b>20회/h 이상</b> — 같은 KOSHA GUIDE H-80-2021 9.1(1)항의 <b>최소 기준</b>입니다("20회 <u>이상</u>"). 팬을 <b>끄지 않고 연속 가동</b>했을 때의 목표 유량이며, 온·오프를 반복하는 횟수가 아닙니다. <b>이 값보다 낮추면 기준 미달</b>이며, 사업장 판단으로 상향하는 것은 무방합니다.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mode B : 희석법(발생량 입력) -->
+      <div id="mode-B-fields" class="mode-fields" style="display:none;">
+        <div class="grid cols-2">
+          <div class="field">
+            <label>물질 시간당 사용(발생)량 W <span class="opt">g/h</span>
+              <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+            </label>
+            <div class="info-box" hidden>1시간 동안 실제로 사용(소비)하는 유해물질의 무게입니다. (예: 도장 작업에서 신너를 1시간에 200g 사용한다면 200 입력)</div>
+            <input type="number" id="b-w" min="0" step="0.01">
+          </div>
+          <div class="field">
+            <label>물질 분자량 M <span class="opt">g/mol</span>
+              <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+            </label>
+            <div class="info-box" hidden>물질안전보건자료(MSDS)의 "물리화학적 특성" 항목에서 확인할 수 있습니다. (예: 톨루엔 92.14, 아세톤 58.08, 자일렌 106.16)</div>
+            <input type="number" id="b-m" min="0" step="0.01">
+          </div>
+          <div class="field">
+            <label>목표(허용) 농도 기준 <span class="opt">TLV, ppm</span>
+              <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+            </label>
+            <div class="info-box" hidden>MSDS "노출기준" 항목 또는 고용노동부 고시 화학물질 노출기준에서 확인할 수 있습니다.</div>
+            <input type="number" id="b-tlv" min="0" step="0.01">
+          </div>
+          <div class="field">
+            <label>안전계수 K</label>
+            <input type="number" id="b-k" value="2" min="1" step="0.1">
+            <div class="hint">여유율. 확산 불균일 등을 고려해 통상 1.5~3 적용</div>
+          </div>
+        </div>
+        <div class="note">
+          계산은 이상기체 몰부피(25℃, 1기압 기준 24.45 L/mol)를 이용해 사용량을 오염물질 발생 체적유량으로 환산한 뒤, 목표(허용) 농도 이하로 희석하는 데 필요한 공기량을 구하는 일반 희석환기 원리를 사용합니다. 법정 설비 인허가·성능 확인 목적이라면 「산업안전보건기준에 관한 규칙」 제430조 원문 계산식과 반드시 대조하십시오.
+        </div>
+      </div>
+
+      <!-- Mode C : 희석법(측정 역산) -->
+      <div id="mode-C-fields" class="mode-fields" style="display:none;">
+        <div class="note">이 측정은 반드시 근로자 진입 없이, 원격 프로브 또는 연장 호스가 달린 가스측정기로 수행하십시오.</div>
+        <div class="grid cols-3">
+          <div class="field">
+            <label>현재 가동 송풍량 Q <span class="opt">㎥/h</span>
+              <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+            </label>
+            <div class="info-box" hidden>지금 실제로 돌리고 있는 송풍기의 풍량입니다. 장비 명판의 정격풍량 또는 실측 풍량을 입력하십시오.</div>
+            <input type="number" id="c-q" min="0" step="0.1">
+          </div>
+          <div class="field">
+            <label>측정 경과시간 <span class="opt">분(min)</span>
+              <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+            </label>
+            <div class="info-box" hidden>송풍을 시작한 시점부터 아래 "측정농도"를 측정한 시점까지 흐른 시간을 분 단위로 입력하십시오. (예: 10분 경과 후 측정했다면 10 입력)</div>
+            <input type="number" id="c-t" min="0" step="1" placeholder="예: 10">
+          </div>
+          <div class="field">
+            <label>초기농도 C0 <span class="opt">ppm</span>
+              <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+            </label>
+            <div class="info-box" hidden>송풍을 <b>시작하기 전</b> 시점의 농도입니다. 사전 측정값이 없으면 0으로 두어도 됩니다.</div>
+            <input type="number" id="c-c0" value="0" min="0" step="0.1">
+          </div>
+          <div class="field">
+            <label>측정농도 C(t) <span class="opt">ppm</span>
+              <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+            </label>
+            <div class="info-box" hidden>위에서 입력한 "측정 경과시간"이 흐른 <b>뒤</b> 실제로 측정한 농도입니다. (C0과 혼동 주의: C0=측정 시작 전, C(t)=시간 경과 후)</div>
+            <input type="number" id="c-ct" min="0" step="0.1">
+          </div>
+          <div class="field">
+            <label>목표(허용) 농도 기준 <span class="opt">ppm</span>
+              <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+            </label>
+            <div class="info-box" hidden>해당 물질의 물질안전보건자료(MSDS) "노출기준" 항목 또는 고용노동부 고시 「화학물질의 분류·표시 및 물질안전보건자료에 관한 기준」의 노출기준을 확인해 입력하십시오.</div>
+            <input type="number" id="c-callow" min="0" step="0.1">
+          </div>
+          <div class="field">
+            <label>안전계수 K
+              <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+            </label>
+            <div class="info-box" hidden>계산값에 곱하는 여유율입니다. 농도 분포가 불균일할 수 있는 점을 고려해 통상 1.5~3을 적용합니다. 확실하지 않으면 2를 권장합니다.</div>
+            <input type="number" id="c-k" value="2" min="1" step="0.1">
+          </div>
+        </div>
+        <div id="c-reliability" class="hint"></div>
+      </div>
+
+    </div>
+    <div class="nav-row">
+      <button class="btn secondary" onclick="goStep(2)">← 이전</button>
+      <button class="btn" onclick="goStep(4)">다음 : 계산 결과 →</button>
+    </div>
+  </div>
+
+  <!-- ===================== STEP 4 ===================== -->
+  <div class="step" data-step="4">
+    <div class="card">
+      <h2>4단계 · 필요환기량 산출 결과</h2>
+      <p class="sub" id="step4-sub">-</p>
+
+      <div class="result-box" id="result-box"></div>
+
+      <div class="formula-box" id="formula-box"></div>
+      <div id="result-notes"></div>
+    </div>
+    <div class="nav-row">
+      <button class="btn secondary" onclick="goStep(3)">← 이전</button>
+      <button class="btn" onclick="goStep(5)">다음 : 송배풍기 매칭 →</button>
+    </div>
+  </div>
+
+  <!-- ===================== STEP 5 ===================== -->
+  <div class="step" data-step="5">
+    <div class="card">
+      <h2>5단계 · 보유 송배풍기 매칭</h2>
+      <p class="sub">보유 장비를 등록하면, 4단계에서 산출된 필요환기량 대비 필요 대수를 자동 계산합니다.
+        <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+      </p>
+      <div class="info-box" hidden>
+        <b>간편 보정</b>: 기존 방식으로 정격풍량 × 유효율을 적용합니다. 덕트 길이·굴곡, 필터 저항 등을 정확히 모르면 기본값 75%를 사용합니다.<br>
+        <b>제조사 운전점</b>: 제조사 성능곡선에서 실제 운전 정압에 해당하는 풍량을 직접 입력합니다.<br>
+        <b>현장 실측</b>: 풍속·덕트 단면적 등으로 현장에서 확인한 실제 풍량을 직접 입력합니다. 세 방식 중 가장 직접적인 값입니다.<br>
+        <b>덕트·정압 선택 입력</b>: 계산 근거를 기록하고 덕트 평균 유속을 확인하는 항목입니다. 덕트 조건만으로 실제 풍량을 확정하지 않으며 제조사 성능곡선 또는 현장 실측값과 함께 사용하십시오.<br>
+        <b>방폭</b>: 인화성 가스·증기가 있을 수 있는 장소에서는 방폭인증 장비 사용이 필요합니다. 해당 장비가 방폭인증을 받았다면 체크하십시오.<br>
+        <b>적용풍량</b>: 선택한 방식에 따라 계산 또는 직접 입력되어 장비 대수와 총 공급풍량 산정에 사용되는 값입니다.
+      </div>
+
+      <table id="fan-table" class="responsive-table">
+        <thead>
+          <tr>
+            <th style="width:17%;">장비명</th>
+            <th style="width:11%;">정격풍량<br>(㎥/h)</th>
+            <th style="width:15%;">풍량 적용방식</th>
+            <th style="width:12%;">보정값</th>
+            <th style="width:7%;">방폭</th>
+            <th style="width:12%;">적용풍량<br>(㎥/h)</th>
+            <th style="width:9%;">계획 대수</th>
+            <th style="width:11%;">공급풍량<br>(㎥/h)</th>
+            <th style="width:6%;"></th>
+          </tr>
+        </thead>
+        <tbody id="fan-tbody"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="7" style="text-align:right;">총 공급풍량 합계</td>
+            <td id="fan-total-supply">0</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div style="display:flex;gap:8px;margin:12px 0 4px;flex-wrap:wrap;">
+        <button class="btn secondary" onclick="addFanRow()">+ 장비 추가</button>
+        <button class="btn secondary" onclick="exportFans()"><svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> JSON 내보내기</button>
+        <label class="btn ghost" style="cursor:pointer;">
+          <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> JSON 불러오기
+          <input type="file" accept=".json" onchange="importFans(event)" style="display:none;">
+        </label>
+        <button class="btn ghost" onclick="toggleConverter()">🔁 풍량 단위 변환기</button>
+      </div>
+
+      <div id="unit-converter" class="note" style="display:none;">
+        <b>풍량 단위 변환기</b> <span class="hint">— 장비 스펙표가 다른 단위(CFM 등)로 표기된 경우 여기서 ㎥/h(CMH)로 환산 후 위 표에 입력하십시오.</span>
+        <div class="grid cols-3" style="margin-top:10px;">
+          <div class="field">
+            <label>값</label>
+            <input type="number" id="conv-value" step="0.01" onchange="runConvert()">
+          </div>
+          <div class="field">
+            <label>변환 전 단위</label>
+            <select id="conv-from" onchange="runConvert()">
+              <option value="CMH">㎥/h (CMH)</option>
+              <option value="CMM">㎥/min (CMM)</option>
+              <option value="Lmin">L/min</option>
+              <option value="CFM">CFM (ft³/min)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>변환 후 단위</label>
+            <select id="conv-to" onchange="runConvert()">
+              <option value="CMH" selected>㎥/h (CMH)</option>
+              <option value="CMM">㎥/min (CMM)</option>
+              <option value="Lmin">L/min</option>
+              <option value="CFM">CFM (ft³/min)</option>
+            </select>
+          </div>
+        </div>
+        <div class="metric" style="max-width:280px;">
+          <div class="label">변환 결과</div>
+          <div class="value" id="conv-result">0.00</div>
+        </div>
+      </div>
+
+      <div class="note" id="fan-summary" style="margin-top:16px;"></div>
+    </div>
+    <div class="nav-row">
+      <button class="btn secondary" onclick="goStep(4)">← 이전</button>
+      <button class="btn" onclick="goStep(6)">다음 : 결과 리포트 →</button>
+    </div>
+  </div>
+
+  <!-- ===================== STEP 6 ===================== -->
+  <div class="step" data-step="6">
+    <div class="card report" id="report-card">
+      <h2 class="no-print" style="margin-bottom:2px;">6단계 · 결과 리포트</h2>
+      <p class="sub no-print">작업허가서 첨부용으로 인쇄하거나 저장할 수 있습니다.</p>
+      <details class="language-options no-print">
+        <summary>🌐 함께 인쇄할 번역 보조 페이지 선택</summary>
+        <p class="hint">한국어 결과서는 항상 먼저 출력됩니다. 선택한 언어마다 새 페이지가 추가됩니다. 번역문은 이해 보조용이며 한국어 원문과 회사 표준절차가 우선합니다.</p>
+        <div class="language-grid">
+          <label><input type="checkbox" name="print-lang" value="en" onchange="renderTranslatedReports()"><span><span class="lang-ko">영어·필리핀</span> <span class="lang-native">(English / Filipino)</span></span></label>
+          <label><input type="checkbox" name="print-lang" value="zh" onchange="renderTranslatedReports()"><span><span class="lang-ko">중국어(간체)</span> <span class="lang-native">(简体中文)</span></span></label>
+          <label><input type="checkbox" name="print-lang" value="ja" onchange="renderTranslatedReports()"><span><span class="lang-ko">일본어</span> <span class="lang-native">(日本語)</span></span></label>
+          <label><input type="checkbox" name="print-lang" value="vi" onchange="renderTranslatedReports()"><span><span class="lang-ko">베트남어</span> <span class="lang-native">(Tiếng Việt)</span></span></label>
+          <label><input type="checkbox" name="print-lang" value="th" onchange="renderTranslatedReports()"><span><span class="lang-ko">태국어</span> <span class="lang-native">(ไทย)</span></span></label>
+          <label><input type="checkbox" name="print-lang" value="id" onchange="renderTranslatedReports()"><span><span class="lang-ko">인도네시아어</span> <span class="lang-native">(Bahasa Indonesia)</span></span></label>
+          <label><input type="checkbox" name="print-lang" value="mn" onchange="renderTranslatedReports()"><span><span class="lang-ko">몽골어</span> <span class="lang-native">(Монгол)</span></span></label>
+          <label><input type="checkbox" name="print-lang" value="my" onchange="renderTranslatedReports()"><span><span class="lang-ko">미얀마어</span> <span class="lang-native">(မြန်မာ)</span></span></label>
+          <label><input type="checkbox" name="print-lang" value="km" onchange="renderTranslatedReports()"><span><span class="lang-ko">캄보디아어(크메르어)</span> <span class="lang-native">(ខ្មែរ)</span></span></label>
+        </div>
+      </details>
+      <div class="print-title" id="print-title"></div>
+      <div id="report-body"></div>
+      <div id="translated-reports"></div>
+    </div>
+    <div class="nav-row no-print">
+      <button class="btn secondary" onclick="goStep(5)">← 이전</button>
+      <button class="btn" onclick="printReport()">🖨 인쇄 / PDF 저장</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ============================================================
+   상태(state)
+============================================================ */
+const state = {
+  step: 1,
+  mode: null,      // 'A' | 'B' | 'C'
+  volume: 0,
+  zones: [],
+  zoneIdSeq: 1,
+  fans: [],
+  fanIdSeq: 1,
+  result: null      // {initial, sustained, requiredQ, notes...}
+};
+
+const STEP_LABELS = [
+  '계산방식', '체적산출', '작업조건', '계산결과', '송배풍기', '결과리포트'
+];
+
+/* ============================================================
+   스텝퍼 렌더 & 이동
+============================================================ */
+function renderStepper(){
+  const ul = document.getElementById('stepper');
+  ul.innerHTML = '';
+  STEP_LABELS.forEach((label, i)=>{
+    const n = i+1;
+    const li = document.createElement('li');
+    li.textContent = label;
+    const span = document.createElement('span');
+    span.className='num';
+    span.textContent = n;
+    li.prepend(span);
+    if(n === state.step) li.classList.add('active');
+    else if(n < state.step) li.classList.add('done');
+    li.onclick = ()=>{ if(n <= state.step || canJump(n)) goStep(n); };
+    ul.appendChild(li);
+  });
+}
+function canJump(n){
+  // 이전에 필요한 최소 조건이 채워졌으면 자유 이동 허용
+  if(n<=2) return true;
+  if(n>=3 && !state.mode) return false;
+  return true;
+}
+function goStep(n){
+  if(n>1 && n>=3 && !state.mode){ alert('먼저 1단계에서 계산방식을 선택하십시오.'); return; }
+  state.step = n;
+  document.querySelectorAll('.step').forEach(el=>{
+    el.style.display = (parseInt(el.dataset.step)===n) ? 'block' : 'none';
+  });
+  renderStepper();
+  if(n===3) renderStep3();
+  if(n===4) computeAndRenderStep4();
+  if(n===5) renderFanTable();
+  if(n===6) renderReport();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+/* ============================================================
+   공용: ⓘ 클릭 시 설명 펼치기
+============================================================ */
+function toggleInfo(btn){
+  let container = btn.parentElement; // <label> 또는 <p> 등 버튼을 감싸는 요소
+  let box = container ? container.nextElementSibling : null;
+  while(box && !box.classList.contains('info-box')) box = box.nextElementSibling;
+  if(box) box.hidden = !box.hidden;
+}
+
+/* ============================================================
+   STEP 1 : 모드 선택
+============================================================ */
+function selectMode(m){
+  state.mode = m;
+  document.querySelectorAll('.choice').forEach(c=>{
+    c.classList.toggle('selected', c.dataset.mode===m);
+  });
+}
+
+/* ============================================================
+   STEP 2 : 체적 산출 (구역 조합형)
+============================================================ */
+const ZONE_SHAPES = {
+  direct:    { label:'직접입력(체적)',   fields:[{key:'v',label:'체적(㎥)'}] },
+  box:       { label:'사각기둥',        fields:[{key:'l',label:'가로(m)'},{key:'w',label:'세로(m)'},{key:'h',label:'높이(m)'}] },
+  cyl:       { label:'원기둥',          fields:[{key:'r',label:'반지름(m)'},{key:'h',label:'높이(m)'}] },
+  tri:       { label:'삼각기둥',        fields:[{key:'base',label:'밑변(m)'},{key:'height',label:'삼각형 높이(m)'},{key:'depth',label:'깊이(m)'}] },
+  frustum:   { label:'원뿔대',          fields:[{key:'d1',label:'상부 지름(m)'},{key:'d2',label:'하부 지름(m)'},{key:'h',label:'높이(m)'}] },
+  trapezoid: { label:'사다리꼴 단면',    fields:[{key:'b1',label:'밑변1(m)'},{key:'b2',label:'밑변2(m)'},{key:'h',label:'사다리꼴 높이(m)'},{key:'depth',label:'깊이(m)'}] },
+  poly:      { label:'임의 다각형(전문가용)', fields:[] },
+};
+const ZONE_HINT = {
+  box:'체적 = 가로 × 세로 × 높이',
+  cyl:'체적 = π × 반지름² × 높이',
+  tri:'체적 = (밑변 × 높이 ÷ 2) × 깊이',
+  frustum:'체적 = (π × 높이 ÷ 3) × (R1² + R1×R2 + R2²)  — R1·R2는 지름의 절반. 경사진 맨홀·하수관 접속부 등에 활용',
+  trapezoid:'체적 = ((밑변1 + 밑변2) ÷ 2 × 높이) × 깊이 — 경사면이 있는 암거·집수조 등에 활용',
+  poly:'체적 = 다각형 단면적(Shoelace 공식) × 높이',
+  direct:'이미 알고 있는 체적을 그대로 입력',
+};
+
+function addZone(shape){
+  state.zones.push({
+    id: state.zoneIdSeq++,
+    name: '',
+    shape: shape || 'direct',
+    sign: 1,
+    vals: {},
+    polyPoints: [],
+    polyH: '',
+    volume: 0
+  });
+  renderZones();
+}
+function removeZone(id){
+  state.zones = state.zones.filter(z=>z.id!==id);
+  renderZones();
+}
+function updateZoneField(id, key, val){
+  const z = state.zones.find(z=>z.id===id);
+  if(!z) return;
+  if(key==='name') z.name = val;
+  else if(key==='shape'){ z.shape = val; z.vals = {}; z.polyPoints = []; z.polyH = ''; }
+  else if(key==='sign') z.sign = parseInt(val,10);
+  else if(key==='polyH') z.polyH = val;
+  else z.vals[key] = parseFloat(val);
+  renderZones();
+}
+function addZonePolyPoint(id){
+  const z = state.zones.find(z=>z.id===id);
+  if(!z) return;
+  z.polyPoints.push({x:'', y:''});
+  renderZones();
+}
+function updateZonePoly(id, idx, axis, val){
+  const z = state.zones.find(z=>z.id===id);
+  if(!z) return;
+  z.polyPoints[idx][axis] = parseFloat(val);
+  renderZones();
+}
+function resetZonePoly(id){
+  const z = state.zones.find(z=>z.id===id);
+  if(!z) return;
+  z.polyPoints = [{x:'',y:''},{x:'',y:''},{x:'',y:''},{x:'',y:''}];
+  renderZones();
+}
+
+function shoelaceArea(points){
+  const pts = (points||[]).filter(p=>p && !isNaN(p.x) && !isNaN(p.y) && p.x!=='' && p.y!=='');
+  if(pts.length < 3) return 0;
+  let sum = 0;
+  for(let i=0;i<pts.length;i++){
+    const p1 = pts[i], p2 = pts[(i+1)%pts.length];
+    sum += (p1.x * p2.y) - (p2.x * p1.y);
+  }
+  return Math.abs(sum)/2;
+}
+
+function computeZoneVolume(z){
+  const v = z.vals || {};
+  switch(z.shape){
+    case 'direct': return v.v || 0;
+    case 'box': return (v.l||0)*(v.w||0)*(v.h||0);
+    case 'cyl': return Math.PI*(v.r||0)*(v.r||0)*(v.h||0);
+    case 'tri': return ((v.base||0)*(v.height||0)/2)*(v.depth||0);
+    case 'frustum': {
+      const R1=(v.d1||0)/2, R2=(v.d2||0)/2, h=v.h||0;
+      return (Math.PI*h/3)*(R1*R1 + R1*R2 + R2*R2);
+    }
+    case 'trapezoid': return (((v.b1||0)+(v.b2||0))/2*(v.h||0))*(v.depth||0);
+    case 'poly': {
+      const area = shoelaceArea(z.polyPoints||[]);
+      return area * (parseFloat(z.polyH)||0);
+    }
+    default: return 0;
+  }
+}
+
+function zonePolyFieldsHTML(z){
+  if(!z.polyPoints || z.polyPoints.length===0){
+    z.polyPoints = [{x:'',y:''},{x:'',y:''},{x:'',y:''},{x:'',y:''}];
+  }
+  const rows = z.polyPoints.map((p,idx)=>`
+    <div class="poly-row">
+      <span>${idx+1}</span>
+      <input type="number" step="0.01" placeholder="x (m)" value="${p.x!==undefined?p.x:''}" onchange="updateZonePoly(${z.id},${idx},'x',this.value)">
+      <input type="number" step="0.01" placeholder="y (m)" value="${p.y!==undefined?p.y:''}" onchange="updateZonePoly(${z.id},${idx},'y',this.value)">
+    </div>`).join('');
+  const area = shoelaceArea(z.polyPoints);
+  return `
+    <div class="field">
+      <label>단면 꼭짓점 좌표(x, y)
+        <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+      </label>
+      <div class="info-box" hidden>
+        도면(또는 실측)에서 임의의 기준점을 원점(0,0)으로 정하고, 나머지 꼭짓점들의 좌표를 <b>한쪽 방향(시계 또는 반시계)으로 순서대로</b> 읽어 입력하십시오. 최소 3개 이상의 좌표가 필요합니다. 순서가 뒤섞이면 면적이 잘못 계산됩니다.
+      </div>
+    </div>
+    <div>${rows}</div>
+    <div style="display:flex;gap:8px;margin:6px 0 12px;">
+      <button type="button" class="btn small secondary" onclick="addZonePolyPoint(${z.id})">+ 좌표 추가</button>
+      <button type="button" class="btn small ghost" onclick="resetZonePoly(${z.id})">초기화</button>
+    </div>
+    <div class="field">
+      <label>단면 높이(깊이) <span class="opt">m</span></label>
+      <input type="number" step="0.01" min="0" value="${z.polyH||''}" onchange="updateZoneField(${z.id},'polyH',this.value)">
+    </div>
+    <div class="hint">단면적: ${area.toFixed(3)} ㎡</div>
+  `;
+}
+
+function zoneCardHTML(z){
+  const info = ZONE_SHAPES[z.shape] || ZONE_SHAPES.box;
+  const fieldsHTML = (z.shape==='poly')
+    ? zonePolyFieldsHTML(z)
+    : `<div class="grid cols-3">` + info.fields.map(f=>`
+        <div class="field">
+          <label>${f.label}</label>
+          <input type="number" step="0.01" min="0" value="${(z.vals&&z.vals[f.key]!==undefined&&!isNaN(z.vals[f.key]))?z.vals[f.key]:''}" onchange="updateZoneField(${z.id},'${f.key}',this.value)">
+        </div>`).join('') + `</div>`;
+  const shapeOptions = Object.entries(ZONE_SHAPES).map(([key,inf])=>
+    `<option value="${key}" ${z.shape===key?'selected':''}>${inf.label}</option>`).join('');
+
+  return `
+    <div class="zone-card">
+      <div class="zone-card-head">
+        <input type="text" class="zone-name" placeholder="구역명(선택, 예: 본체)" value="${z.name||''}" onchange="updateZoneField(${z.id},'name',this.value)">
+        <select onchange="updateZoneField(${z.id},'shape',this.value)">${shapeOptions}</select>
+        <div class="zone-sign">
+          <button type="button" class="${z.sign!==-1?'active':''}" onclick="updateZoneField(${z.id},'sign',1)">+ 합산</button>
+          <button type="button" class="${z.sign===-1?'active':''}" onclick="updateZoneField(${z.id},'sign',-1)">− 차감</button>
+        </div>
+        <button type="button" class="btn small danger" onclick="removeZone(${z.id})">삭제</button>
+      </div>
+      ${fieldsHTML}
+      <div class="hint">${ZONE_HINT[z.shape]||''}</div>
+      <div class="zone-volume">이 구역 체적: ${z.sign===-1?'−':'+'}${(z.volume||0).toFixed(2)} ㎥</div>
+    </div>
+  `;
+}
+
+function renderZones(){
+  state.zones.forEach(z=>{ z.volume = computeZoneVolume(z); });
+  const wrap = document.getElementById('zones-list');
+  if(wrap) wrap.innerHTML = state.zones.map(z=>zoneCardHTML(z)).join('');
+
+  let total = 0;
+  state.zones.forEach(z=>{ total += (z.sign===-1?-1:1)*(z.volume||0); });
+  total = Math.max(0, total);
+  const ratioEl = document.getElementById('space-ratio');
+  const ratio = ratioEl ? (parseFloat(ratioEl.value)||100) : 100;
+  state.volume = total * (ratio/100);
+
+  const el = document.getElementById('volume-result');
+  if(el) el.innerHTML = state.volume.toFixed(2) + ' <span class="unit">㎥</span>';
+}
+
+/* ============================================================
+   STEP 3 : 작업조건
+============================================================ */
+function renderStep3(){
+  document.querySelectorAll('.mode-fields').forEach(f=>f.style.display='none');
+  const sub = document.getElementById('step3-sub');
+  if(state.mode==='A'){
+    document.getElementById('mode-A-fields').style.display='block';
+    sub.textContent = '체적배수법: 최초 급기 배수 및 유지 환기횟수 기준을 입력하십시오.';
+  } else if(state.mode==='B'){
+    document.getElementById('mode-B-fields').style.display='block';
+    sub.textContent = '희석법(발생량 입력): 물질 사용량과 허용기준을 입력하십시오.';
+  } else if(state.mode==='C'){
+    document.getElementById('mode-C-fields').style.display='block';
+    sub.textContent = '희석법(측정 역산): 송풍 가동 후 측정한 농도 데이터를 입력하십시오.';
+    document.getElementById('c-q').onchange =
+    document.getElementById('c-t').onchange = checkReliability;
+  }
+}
+function checkReliability(){
+  const q = parseFloat(document.getElementById('c-q').value)||0;
+  const tMin = parseFloat(document.getElementById('c-t').value)||0;  // 입력은 분(min) 단위
+  const t = tMin/60; // 계산용 시간(h) 환산
+  const v = state.volume||0;
+  const box = document.getElementById('c-reliability');
+  if(q<=0 || v<=0){ box.textContent=''; return; }
+  const tminRecommendH = 3*v/q;
+  const tminRecommendMin = tminRecommendH*60;
+  if(t < tminRecommendH){
+    box.innerHTML = `<span class="badge bad">신뢰도 낮음</span> 권장 최소 측정시간(3V/Q) = 약 ${tminRecommendMin.toFixed(1)}분 이상 경과 후 측정을 권장합니다. (현재 입력: ${tMin}분)`;
+  } else {
+    box.innerHTML = `<span class="badge ok">측정시간 적정</span> 권장 최소 측정시간(3V/Q) = 약 ${tminRecommendMin.toFixed(1)}분`;
+  }
+}
+
+/* ============================================================
+   STEP 4 : 계산
+============================================================ */
+function computeAndRenderStep4(){
+  const V = state.volume || 0;
+  const resultBox = document.getElementById('result-box');
+  const formulaBox = document.getElementById('formula-box');
+  const notesBox = document.getElementById('result-notes');
+  const sub = document.getElementById('step4-sub');
+  resultBox.innerHTML=''; formulaBox.textContent=''; notesBox.innerHTML='';
+
+  if(V<=0){
+    sub.textContent = '체적이 입력되지 않았습니다. 2단계로 돌아가 체적을 입력하십시오.';
+    return;
+  }
+
+  if(state.mode==='A'){
+    const mult = parseFloat(document.getElementById('a-multiplier').value)||10;
+    const ach = parseFloat(document.getElementById('a-ach').value)||20;
+    const initial = V*mult;
+    const sustained = V*ach;
+    sub.textContent = '체적배수법 산출 결과';
+    resultBox.innerHTML = metricHTML('최초 급기량 — 최소 기준 (사전 퍼지)', initial, '㎥') +
+                           metricHTML('유지 환기량 — 최소 기준 (연속 가동)', sustained, '㎥/h');
+    formulaBox.textContent =
+`최초 급기량[㎥]   ≥ 실내체적(${V.toFixed(2)}) × 급기배수(${mult})   = ${initial.toFixed(2)} ㎥  (이 값 "이상")
+유지환기량[㎥/h] ≥ 실내체적(${V.toFixed(2)}) × 환기횟수(${ach})     = ${sustained.toFixed(2)} ㎥/h  (이 값 "이상")`;
+    state.result = {mode:'A', initial, sustained, requiredQ: sustained};
+    notesBox.innerHTML = `<div class="note">참고: 현장에서 "20㎥/h 사양 팬으로 15분 급기"라는 관행을 들어보셨을 수 있습니다. 이는 과거 5배 기준(2021년 개정 전) 때의 산식이며, 현재 10배 기준으로는 <b>동일한 팬을 그대로 15분만 가동하면 목표치(10배)에 못 미칠 수 있습니다.</b> 정확한 소요시간은 5단계에서 실제 등록한 장비의 공급풍량 기준으로 자동 계산됩니다.</div>`;
+
+  } else if(state.mode==='B'){
+    const W = parseFloat(document.getElementById('b-w').value)||0;
+    const M = parseFloat(document.getElementById('b-m').value)||0;
+    const TLV = parseFloat(document.getElementById('b-tlv').value)||0;
+    const K = parseFloat(document.getElementById('b-k').value)||1;
+    let requiredQ = 0, molarFlow=0, G=0;
+    if(M>0 && TLV>0){
+      molarFlow = W / M;               // mol/h
+      G = molarFlow * 0.02445;         // ㎥/h  (25℃, 1atm 몰부피 24.45 L/mol)
+      const Cfrac = TLV * 1e-6;
+      requiredQ = (G / Cfrac) * K;
+    }
+    sub.textContent = '희석법(발생량 입력) 산출 결과';
+    resultBox.innerHTML = metricHTML('오염물질 발생 체적유량 (G)', G, '㎥/h') +
+                           metricHTML('필요환기량 — 최소 기준', requiredQ, '㎥/h');
+    formulaBox.textContent =
+`몰유량           = W / M               = ${W} / ${M} = ${molarFlow.toFixed(5)} mol/h
+발생 체적유량 G  = 몰유량 × 24.45L/mol÷1000 = ${G.toFixed(5)} ㎥/h
+필요환기량       = G ÷ (TLV×10⁻⁶) × K   = ${requiredQ.toFixed(2)} ㎥/h`;
+    notesBox.innerHTML = `<div class="note">본 계산은 25℃·1기압 기준 이상기체 몰부피(24.45 L/mol)를 사용한 일반 희석환기 원리입니다. 법정 설비 성능기준(안전보건규칙 제430조) 적용 시에는 원문 계산식과 반드시 재대조하십시오.</div>`;
+    state.result = {mode:'B', requiredQ, G, molarFlow};
+
+  } else if(state.mode==='C'){
+    const Q = parseFloat(document.getElementById('c-q').value)||0;
+    const tMin = parseFloat(document.getElementById('c-t').value)||0;  // 입력: 분(min)
+    const t = tMin/60; // 계산용 시간(h)
+    const C0 = (parseFloat(document.getElementById('c-c0').value)||0) * 1e-6;
+    const Ct = (parseFloat(document.getElementById('c-ct').value)||0) * 1e-6;
+    const Callow = (parseFloat(document.getElementById('c-callow').value)||0) * 1e-6;
+    const K = parseFloat(document.getElementById('c-k').value)||1;
+
+    let G=0, requiredQ=0, denom=0, reliable=true, tmin=0;
+    if(Q>0 && V>0){
+      const exponent = Math.exp(-(Q*t)/V);
+      denom = 1 - exponent;
+      tmin = 3*V/Q;
+      reliable = t >= tmin;
+      if(denom > 0.0001){
+        G = Q * (Ct - C0*exponent) / denom;   // ㎥/h
+      }
+      if(Callow>0){
+        requiredQ = (G / Callow) * K;
+      }
+    }
+    sub.textContent = '희석법(측정 역산) 산출 결과';
+    resultBox.innerHTML = metricHTML('역산된 발생 체적유량 (G)', G, '㎥/h') +
+                           metricHTML('필요환기량 — 최소 기준', requiredQ, '㎥/h');
+    formulaBox.textContent =
+`Q×t/V 지수항 (e^-(Qt/V)) = ${Math.exp(-(Q*t)/V).toFixed(4)}
+G = Q × [C(t) − C0×e^-(Qt/V)] / [1 − e^-(Qt/V)] = ${G.toFixed(5)} ㎥/h
+필요환기량 = G ÷ Callow × K = ${requiredQ.toFixed(2)} ㎥/h
+권장 최소 측정시간(3V/Q) = 약 ${(tmin*60).toFixed(1)}분  (입력값: ${tMin}분)`;
+
+    if(!reliable){
+      notesBox.innerHTML = `<div class="note danger"><b>추정 신뢰도 낮음.</b> 측정시간이 권장 최소시간(3V/Q)에 못 미쳐 발생량이 과소 추정되었을 수 있습니다. 가능하면 더 긴 시간 경과 후 재측정을 권장합니다.</div>
+      <div class="note">본 결과는 실측을 대체할 수 없는 <b>설계 참고용 추정치</b>입니다.</div>`;
+    } else {
+      notesBox.innerHTML = `<div class="note">본 결과는 실측을 대체할 수 없는 <b>설계 참고용 추정치</b>입니다. 발생량이 시간에 따라 변할 수 있으므로 보수적으로(여유 있게) 적용하십시오.</div>`;
+    }
+    state.result = {mode:'C', requiredQ, G, reliable, tmin, t};
+  }
+}
+function metricHTML(label, value, unit, decimals){
+  const d = (decimals!==undefined) ? decimals : ((Math.abs(value) > 0 && Math.abs(value) < 0.01) ? 5 : 2);
+  return `<div class="metric"><div class="label">${label}</div><div class="value">${(value||0).toFixed(d)} <span class="unit">${unit}</span></div></div>`;
+}
+
+/* ============================================================
+   STEP 5 : 송배풍기 매칭
+============================================================ */
+function getRequiredQ(){
+  if(!state.result) return 0;
+  if(state.result.mode==='A') return state.result.sustained;
+  return state.result.requiredQ || 0;
+}
+function addFanRow(name, rated, eff, explosion){
+  state.fans.push({
+    id: state.fanIdSeq++,
+    name: name || '',
+    rated: rated || 0,
+    eff: (eff===undefined? 75: eff),
+    flowMethod: 'estimate',
+    appliedFlow: 0,
+    ductDiameter: 0,
+    ductLength: 0,
+    bendCount: 0,
+    staticPressure: 0,
+    advancedNote: '',
+    advancedOpen: false,
+    explosion: explosion || false,
+    qty: 0
+  });
+  renderFanTable();
+}
+function removeFan(id){
+  state.fans = state.fans.filter(f=>f.id!==id);
+  renderFanTable();
+}
+function updateFan(id, key, val){
+  const f = state.fans.find(f=>f.id===id);
+  if(!f) return;
+  if(key==='explosion') f[key]=val;
+  else if(key==='name' || key==='flowMethod' || key==='advancedNote') f[key]=val;
+  else f[key] = parseFloat(val)||0;
+  renderFanTable();
+}
+function getFanEffective(f){
+  if(f.flowMethod==='manufacturer' || f.flowMethod==='measured'){
+    return Math.max(0, parseFloat(f.appliedFlow)||0);
+  }
+  return Math.max(0, (parseFloat(f.rated)||0) * ((parseFloat(f.eff)||0)/100));
+}
+function setFanAdvancedOpen(id, isOpen){
+  const f = state.fans.find(f=>f.id===id);
+  if(f) f.advancedOpen = isOpen;
+}
+function fanMethodLabel(method){
+  return {
+    estimate:'간편 보정',
+    manufacturer:'제조사 운전점',
+    measured:'현장 실측'
+  }[method] || '간편 보정';
+}
+function renderFanTable(){
+  const tbody = document.getElementById('fan-tbody');
+  const requiredQ = getRequiredQ();
+  tbody.innerHTML='';
+  let totalSupply = 0;
+
+  state.fans.forEach(f=>{
+    const effective = getFanEffective(f);
+    const needQty = effective>0 ? Math.ceil(requiredQ/effective) : 0;
+    const supply = effective * f.qty;
+    totalSupply += supply;
+    const basisInput = f.flowMethod==='estimate'
+      ? `<div class="fan-basis-wrap"><input class="fan-basis-input" type="number" value="${f.eff}" min="0" max="100" onchange="updateFan(${f.id},'eff',this.value)"><div class="hint">유효율 %</div></div>`
+      : `<div class="fan-basis-wrap"><input class="fan-basis-input" type="number" value="${f.appliedFlow||0}" min="0" step="0.1" onchange="updateFan(${f.id},'appliedFlow',this.value)"><div class="hint">${f.flowMethod==='measured'?'실측':'운전점'} ㎥/h</div></div>`;
+    const diameterM = (parseFloat(f.ductDiameter)||0)/1000;
+    const ductVelocity = diameterM>0 && effective>0
+      ? effective/3600/(Math.PI*Math.pow(diameterM,2)/4)
+      : 0;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td data-label="장비명"><input type="text" value="${f.name}" onchange="updateFan(${f.id},'name',this.value)" placeholder="예: 이동식 송풍기 #1"></td>
+      <td data-label="정격풍량(㎥/h)"><input type="number" value="${f.rated}" min="0" onchange="updateFan(${f.id},'rated',this.value)"></td>
+      <td data-label="풍량 적용방식"><select onchange="updateFan(${f.id},'flowMethod',this.value)">
+        <option value="estimate" ${f.flowMethod==='estimate'?'selected':''}>간편 보정</option>
+        <option value="manufacturer" ${f.flowMethod==='manufacturer'?'selected':''}>제조사 운전점</option>
+        <option value="measured" ${f.flowMethod==='measured'?'selected':''}>현장 실측</option>
+      </select></td>
+      <td data-label="보정값">${basisInput}</td>
+      <td data-label="방폭"><input type="checkbox" ${f.explosion?'checked':''} onchange="updateFan(${f.id},'explosion',this.checked)"></td>
+      <td data-label="적용풍량(㎥/h)"><div class="fan-output-wrap">${effective.toFixed(1)}<div class="hint" style="margin-top:2px;">필요 ${needQty}대</div></div></td>
+      <td data-label="계획 대수"><input type="number" value="${f.qty}" min="0" onchange="updateFan(${f.id},'qty',this.value)"></td>
+      <td data-label="공급풍량(㎥/h)">${supply.toFixed(1)}</td>
+      <td class="fan-delete-cell"><button class="btn small danger fan-delete-btn" onclick="removeFan(${f.id})">삭제</button></td>
+    `;
+    tbody.appendChild(tr);
+    const advancedTr = document.createElement('tr');
+    advancedTr.className = 'fan-advanced-row';
+    advancedTr.innerHTML = `<td colspan="9">
+      <details class="fan-advanced" ${f.advancedOpen?'open':''} ontoggle="setFanAdvancedOpen(${f.id},this.open)">
+        <summary>선택 입력 · 덕트·정압 조건 ${f.flowMethod==='estimate'?'(계산에는 현재 유효율 적용)':'(풍량 근거 기록)'}</summary>
+        <div class="fan-advanced-grid">
+          <div class="field"><label>덕트 지름 (mm)</label><input type="number" min="0" value="${f.ductDiameter||0}" onchange="updateFan(${f.id},'ductDiameter',this.value)"></div>
+          <div class="field"><label>덕트 길이 (m)</label><input type="number" min="0" step="0.1" value="${f.ductLength||0}" onchange="updateFan(${f.id},'ductLength',this.value)"></div>
+          <div class="field"><label>굴곡 개수</label><input type="number" min="0" step="1" value="${f.bendCount||0}" onchange="updateFan(${f.id},'bendCount',this.value)"></div>
+          <div class="field"><label>운전 정압 (Pa)</label><input type="number" min="0" step="1" value="${f.staticPressure||0}" onchange="updateFan(${f.id},'staticPressure',this.value)"></div>
+          <div class="field fan-advanced-note"><label>성능자료·실측 메모</label><input type="text" value="${f.advancedNote||''}" onchange="updateFan(${f.id},'advancedNote',this.value)" placeholder="예: 제조사 곡선 250Pa / 열선풍속계 실측"></div>
+        </div>
+        <div class="hint">${ductVelocity>0?`적용풍량 기준 덕트 평균 유속 약 <b>${ductVelocity.toFixed(2)} m/s</b>. `:''}덕트 조건만으로 실제 풍량을 확정할 수 없습니다. 제조사 성능곡선의 운전점 풍량 또는 현장 실측값을 적용하십시오.</div>
+      </details>
+    </td>`;
+    tbody.appendChild(advancedTr);
+  });
+
+  document.getElementById('fan-total-supply').textContent = totalSupply.toFixed(1) + ' ㎥/h';
+
+  const summary = document.getElementById('fan-summary');
+  if(requiredQ<=0){
+    summary.innerHTML = '4단계에서 필요환기량이 먼저 산출되어야 합니다.';
+  } else if(state.fans.length===0){
+    summary.innerHTML = '등록된 장비가 없습니다. "장비 추가" 버튼으로 보유 송배풍기를 등록하십시오.';
+  } else {
+    const margin = ((totalSupply/requiredQ)-1)*100;
+    const badge = totalSupply>=requiredQ
+      ? `<span class="badge ok">충족 (여유율 ${margin.toFixed(1)}%)</span>`
+      : `<span class="badge bad">부족 (${(requiredQ-totalSupply).toFixed(1)} ㎥/h 부족)</span>`;
+    let timingLine = '';
+    if(state.result && state.result.mode==='A' && totalSupply>0){
+      const purgeMinutes = (state.result.initial / totalSupply) * 60;
+      timingLine = `<div style="margin-top:8px;">현재 계획 장비(연속가동, 총 ${totalSupply.toFixed(1)} ㎥/h)로 <b>최초 급기(${state.result.initial.toFixed(1)}㎥)</b>를 완료하는 데 약 <b>${purgeMinutes.toFixed(1)}분</b> 소요됩니다. 이후에는 <b>팬을 끄지 않고</b> 동일하게 연속 가동하여 유지환기량을 충족하십시오.</div>`;
+    } else if(state.result && state.result.mode==='A'){
+      timingLine = `<div style="margin-top:8px;">계획 공급풍량이 0이어서 최초 급기 소요시간을 계산할 수 없습니다.</div>`;
+    } else if(state.result && (state.result.mode==='B' || state.result.mode==='C')){
+      timingLine = computeSteadyStateLine(totalSupply);
+    }
+    summary.innerHTML = `필요환기량(최소 기준) <b>${requiredQ.toFixed(1)} ㎥/h 이상</b> 대비 현재 계획 공급풍량 <b>${totalSupply.toFixed(1)} ㎥/h</b> — ${badge}${timingLine}`;
+  }
+}
+
+/* ------------------------------------------------------------
+   정상상태(목표농도) 도달 예상 시간 계산 (희석법 B·C 공용)
+   질량보존식: C(t) = Css + (C0-Css)e^(-Qt/V),  Css = G/Q
+   ------------------------------------------------------------ */
+function computeSteadyStateLine(totalSupplyQ){
+  const V = state.volume;
+  if(!state.result || totalSupplyQ<=0 || V<=0) {
+    return `<div style="margin-top:8px;">계획 공급풍량 또는 체적이 없어 도달시간을 계산할 수 없습니다.</div>`;
+  }
+  const G = state.result.G || 0;
+  let C0frac = 0, Callowfrac = 0;
+  if(state.result.mode==='B'){
+    C0frac = 0; // 발생 시작 시점을 청정 상태(0)로 가정
+    Callowfrac = (parseFloat(document.getElementById('b-tlv').value)||0) * 1e-6;
+  } else {
+    // 모드 C: "지금부터" 실제 배치 장비로 몇 분 더 걸리는지 예측하는 것이므로,
+    // 기준 시점(t=0)의 농도는 3단계의 초기농도(C0)가 아니라 마지막 측정농도 C(t)를 사용한다.
+    C0frac = (parseFloat(document.getElementById('c-ct').value)||0) * 1e-6;
+    Callowfrac = (parseFloat(document.getElementById('c-callow').value)||0) * 1e-6;
+  }
+  if(Callowfrac<=0){
+    return `<div style="margin-top:8px;">목표(허용) 농도 기준이 입력되지 않아 도달시간을 계산할 수 없습니다.</div>`;
+  }
+
+  const Css = G / totalSupplyQ;                 // 이 풍량으로 계속 가동 시 도달하는 정상상태 농도 (fraction)
+  const t95min = (3 * V / totalSupplyQ) * 60;    // 정상상태(약 95%) 도달 일반 목표치, 분 단위
+
+  let html = `<div style="margin-top:8px;">현재 계획 장비(연속가동, 총 ${totalSupplyQ.toFixed(1)} ㎥/h) 기준, 농도가 <b>안정(정상상태)</b>되기까지 약 <b>${t95min.toFixed(1)}분</b> 소요될 것으로 예상됩니다. <span class="hint">(체적×3 ÷ 풍량 기준 근사치, 팬을 끄지 않고 연속 가동 전제)</span></div>`;
+
+  if(Css >= Callowfrac){
+    html += `<div class="note danger" style="margin-top:6px;"><b>현재 공급풍량으로는 목표 농도 도달이 불가능합니다.</b> 이 풍량으로 계속 가동해도 정상상태 농도가 약 ${(Css*1e6).toFixed(2)}ppm으로, 목표 기준 ${(Callowfrac*1e6).toFixed(2)}ppm을 초과한 채 유지됩니다. 공급풍량을 늘리거나 장비를 추가하십시오.</div>`;
+  } else if(C0frac <= Callowfrac){
+    html += `<div class="note ok" style="margin-top:6px;">초기농도가 이미 목표 이하이며, 이 풍량의 정상상태 농도(약 ${(Css*1e6).toFixed(2)}ppm)도 목표 이하로 유지될 것으로 예상됩니다. 별도 대기 없이도 농도가 목표를 넘지 않을 것으로 판단되나, 반드시 실측으로 재확인하십시오.</div>`;
+  } else {
+    const tReachMin = -(V/totalSupplyQ) * Math.log((Callowfrac-Css)/(C0frac-Css)) * 60;
+    html += `<div class="note ok" style="margin-top:6px;">현재 농도(약 ${(C0frac*1e6).toFixed(2)}ppm)가 목표 기준(${(Callowfrac*1e6).toFixed(2)}ppm) 이하로 내려가기까지 약 <b>${tReachMin.toFixed(1)}분</b> 소요될 것으로 예상됩니다. 이 시간 경과 후에도 반드시 실측으로 확인한 뒤 출입시키십시오.</div>`;
+  }
+  return html;
+}
+/* ------------------------------------------------------------
+   풍량 단위 변환기 (CMH 기준으로 환산 후 목표단위로 재환산)
+   ------------------------------------------------------------ */
+const UNIT_TO_CMH = {
+  CMH: 1,
+  CMM: 60,          // 1 ㎥/min = 60 ㎥/h
+  Lmin: 0.06,       // 1 L/min = 0.06 ㎥/h
+  CFM: 1.699011     // 1 CFM = 1.699011 ㎥/h
+};
+function toggleConverter(){
+  const el = document.getElementById('unit-converter');
+  el.style.display = (el.style.display==='none') ? 'block' : 'none';
+}
+function runConvert(){
+  const v = parseFloat(document.getElementById('conv-value').value)||0;
+  const from = document.getElementById('conv-from').value;
+  const to = document.getElementById('conv-to').value;
+  const cmh = v * UNIT_TO_CMH[from];
+  const result = cmh / UNIT_TO_CMH[to];
+  document.getElementById('conv-result').textContent = result.toFixed(3);
+}
+
+function printReport(){
+  renderTranslatedReports();
+  if(window.AndroidBridge && window.AndroidBridge.print){
+    window.AndroidBridge.print();
+  } else {
+    window.print();
+  }
+}
+function downloadOrSave(filename, content, mime){
+  if(window.AndroidBridge && window.AndroidBridge.saveFile){
+    window.AndroidBridge.saveFile(filename, content);
+    return;
+  }
+
+
+  function callPywebviewSave(){
+    window.pywebview.api.save_file(filename, content).then(function(ok){
+      if(ok === false){
+        alert('저장이 취소되었거나 실패했습니다. (' + filename + ')');
+      }
+    }).catch(function(err){
+      alert('파일 저장 중 오류가 발생했습니다: ' + err);
+    });
+  }
+
+  if(window.pywebview){
+    // 데스크톱 앱(pywebview) 환경으로 추정됨.
+    // 창이 뜬 직후에는 저장 기능(js_api)이 아직 연결되기 전일 수 있어, 준비될 때까지 잠시 재시도.
+    if(window.pywebview.api && window.pywebview.api.save_file){
+      callPywebviewSave();
+      return;
+    }
+    let attempts = 0;
+    const maxAttempts = 15; // 약 3초간 재시도
+    const timer = setInterval(function(){
+      attempts++;
+      if(window.pywebview.api && window.pywebview.api.save_file){
+        clearInterval(timer);
+        callPywebviewSave();
+      } else if(attempts >= maxAttempts){
+        clearInterval(timer);
+        alert('데스크톱 앱의 저장 기능이 아직 준비되지 않았습니다.\n앱을 완전히 종료했다가 다시 실행한 뒤 시도해 주세요.');
+      }
+    }, 200);
+    return;
+  }
+
+  const blob = new Blob([content], {type: mime || 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function exportFans(){
+  const data = JSON.stringify(state.fans, null, 2);
+  downloadOrSave('송배풍기_목록.json', data, 'application/json');
+}
+function importFans(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = evt=>{
+    try{
+      const arr = JSON.parse(evt.target.result);
+      if(Array.isArray(arr)){
+        state.fans = arr.map(f=>({
+          id: state.fanIdSeq++,
+          name: f.name||'', rated: f.rated||0, eff: f.eff!==undefined?f.eff:75,
+          flowMethod: f.flowMethod||'estimate', appliedFlow:f.appliedFlow||0,
+          ductDiameter:f.ductDiameter||0, ductLength:f.ductLength||0,
+          bendCount:f.bendCount||0, staticPressure:f.staticPressure||0,
+          advancedNote:f.advancedNote||'',
+          advancedOpen:false,
+          explosion: !!f.explosion, qty: f.qty||0
+        }));
+        renderFanTable();
+      }
+    }catch(err){ alert('JSON 파일을 읽을 수 없습니다.'); }
+  };
+  reader.readAsText(file);
+}
+
+/* ============================================================
+   STEP 6 : 리포트
+============================================================ */
+function modeName(m){
+  return {A:'체적배수법', B:'희석법 (발생량 직접입력)', C:'희석법 (농도 측정 기반 역산)'}[m] || '-';
+}
+function renderReport(){
+  const body = document.getElementById('report-body');
+  const r = state.result || {};
+  const requiredQ = getRequiredQ();
+  const workers = document.getElementById('worker-count').value || '-';
+  const spaceName = document.getElementById('space-name').value || '';
+  const now = new Date();
+  const dateStr = now.getFullYear()+'.'+String(now.getMonth()+1).padStart(2,'0')+'.'+String(now.getDate()).padStart(2,'0');
+  const formatCriterionNumber = value=>{
+    const number = Number(value);
+    if(!Number.isFinite(number)) return '-';
+    return Number.isInteger(number) ? String(number) : number.toFixed(1);
+  };
+  const criterionValue = r.mode==='A'
+    ? `최초 ${formatCriterionNumber(document.getElementById('a-multiplier')?.value || 10)}배 · 작업 중 ${formatCriterionNumber(document.getElementById('a-ach')?.value || 20)}회/h`
+    : `희석환기식 · 안전계수 K=${formatCriterionNumber(document.getElementById(r.mode==='C'?'c-k':'b-k')?.value || 1)}`;
+
+  document.getElementById('print-title').innerHTML =
+    `<span class="pt-title-wrap"><small class="pt-kicker">PRE-WORK VENTILATION REVIEW</small><strong>밀폐공간 환기량 사전검토 결과서</strong></span>
+     <span class="pt-sub"><b>사전검토용 · 현장 측정 필수</b>${spaceName ? `<span>${escapeReportText(spaceName)}</span>` : ''}<span>작성일 ${dateStr}</span></span>`;
+
+  let modeSpecific = '';
+  if(r.mode==='A'){
+    modeSpecific = `
+      <div class="kv"><div>최초 급기량</div><div>${r.initial.toFixed(2)} ㎥ (연속가동 총 공급풍량 기준 소요시간 별도 표기)</div></div>
+      <div class="kv"><div>유지 환기량</div><div>${r.sustained.toFixed(2)} ㎥/h (팬을 끄지 않고 연속 가동 유지)</div></div>`;
+  } else if(r.mode==='B'){
+    modeSpecific = `
+      <div class="kv"><div>오염물질 발생 체적유량</div><div>${(r.G||0).toFixed(4)} ㎥/h</div></div>
+      <div class="kv"><div>필요환기량(최소 기준)</div><div>${(r.requiredQ||0).toFixed(2)} ㎥/h 이상</div></div>`;
+  } else if(r.mode==='C'){
+    modeSpecific = `
+      <div class="kv"><div>역산된 발생 체적유량</div><div>${(r.G||0).toFixed(4)} ㎥/h</div></div>
+      <div class="kv"><div>필요환기량(최소 기준)</div><div>${(r.requiredQ||0).toFixed(2)} ㎥/h 이상</div></div>
+      <div class="kv"><div>측정 신뢰도</div><div>${r.reliable? '적정':'낮음 (권장 최소시간 미달)'}</div></div>`;
+  }
+
+  let fanRows = '';
+  state.fans.forEach(f=>{
+    const effective = getFanEffective(f);
+    const needQty = effective>0? Math.ceil(requiredQ/effective):0;
+    const basis = f.flowMethod==='estimate' ? `유효율 ${f.eff}%` : `${fanMethodLabel(f.flowMethod)} ${f.appliedFlow||0}㎥/h`;
+    const advanced = [f.staticPressure?`${f.staticPressure}Pa`:'',f.ductDiameter?`Ø${f.ductDiameter}mm`:'',f.ductLength?`${f.ductLength}m`:'',f.bendCount?`굴곡 ${f.bendCount}`:''].filter(Boolean).join(' · ');
+    fanRows += `<tr><td data-label="장비명">${f.name||'-'}${advanced?`<div class="hint">${advanced}</div>`:''}</td><td data-label="정격풍량(㎥/h)">${f.rated}</td><td data-label="풍량근거">${basis}</td><td data-label="방폭">${f.explosion?'O':'-'}</td><td data-label="적용풍량(㎥/h)">${effective.toFixed(1)}</td><td data-label="계획대수">${f.qty}</td><td data-label="필요대수">${needQty}</td></tr>`;
+  });
+  const totalSupply = state.fans.reduce((s,f)=>s+getFanEffective(f)*f.qty,0);
+  const margin = requiredQ>0 ? (((totalSupply/requiredQ)-1)*100).toFixed(1) : '-';
+  const supplyOk = requiredQ>0 && totalSupply>=requiredQ;
+
+  const sections = [];
+
+  sections.push(`<div class="print-overview-grid">
+    <div class="print-overview-item date"><span>작성일</span><b>${dateStr}</b></div>
+    <div class="print-overview-item space"><span>공간명</span><b>${escapeReportText(spaceName || '-')}</b></div>
+    <div class="print-overview-item workers"><span>작업 인원수</span><b>${escapeReportText(workers)}</b></div>
+    <div class="print-overview-item method"><span>계산방식</span><b>${modeName(r.mode)}</b></div>
+    <div class="print-overview-item volume"><span>공간 체적(V)</span><b>${state.volume.toFixed(2)} ㎥</b></div>
+    <div class="print-overview-item criteria"><span>적용 환기기준</span><b>${criterionValue}</b></div>
+  </div>`);
+
+  sections.push(modeSpecific || '<p>산출된 결과가 없습니다.</p>');
+
+  sections.push(`<div class="print-key-metrics">
+      <div><span>최소 필요환기량</span><strong>${requiredQ.toFixed(1)}</strong><small>㎥/h 이상</small></div>
+      <div><span>계획 공급풍량</span><strong>${totalSupply.toFixed(1)}</strong><small>㎥/h</small></div>
+      <div><span>여유율</span><strong>${margin}</strong><small>%</small></div>
+      <div class="print-status ${supplyOk?'ok':'bad'}"><span>계획 판정</span><strong>${supplyOk?'충족':'부족'}</strong><small>${supplyOk?'현장 측정 후 승인':'장비계획 재검토'}</small></div>
+    </div>
+    <table class="responsive-table report-equipment-table">
+      <colgroup>
+        <col style="width:22%;"><col style="width:13%;"><col style="width:18%;">
+        <col style="width:8%;"><col style="width:15%;"><col style="width:12%;"><col style="width:12%;">
+      </colgroup>
+      <thead><tr><th>장비명</th><th>정격풍량(㎥/h)</th><th>풍량 근거</th><th>방폭</th><th>적용풍량(㎥/h)</th><th>계획대수</th><th>필요대수</th></tr></thead>
+      <tbody>${fanRows || '<tr><td colspan="7">등록된 장비 없음</td></tr>'}</tbody>
+    </table>
+    <div class="kv"><div>필요환기량(최소 기준)</div><div>${requiredQ.toFixed(2)} ㎥/h 이상</div></div>
+    <div class="kv"><div>계획 총 공급풍량</div><div>${totalSupply.toFixed(2)} ㎥/h</div></div>
+    <div class="kv"><div>여유율</div><div>${margin}%</div></div>
+    ${(r.mode==='A' && totalSupply>0) ? `<div class="kv"><div>최초 급기 소요시간</div><div>약 ${((r.initial/totalSupply)*60).toFixed(1)} 분 (연속 가동 유지)</div></div>` : ''}`);
+
+  if(r.mode==='B' || r.mode==='C'){
+    sections.push(computeSteadyStateLine(totalSupply));
+  }
+
+  sections.push(buildPermitChecklistHTML());
+
+  sections.push(`<div class="note danger"><b>출입허가 판단 주의:</b> 본 결과는 환기계획을 위한 참고값이며 출입허가서나 농도 측정기록을 대체하지 않습니다. 작업 시작·재개 전에는 제619조의2에 따른 측정·평가를 실시하고, 제620조에 따라 작업 전·중 적정공기가 유지되도록 환기해야 합니다. 부적정·경보·이상징후가 있으면 즉시 작업을 중지하고 대피하십시오.</div>`);
+
+  sections.push(buildReferenceHTML(r.mode));
+
+  sections.push(`<table class="sig-table">
+      <thead><tr><th style="width:16%;">구분</th><th style="width:28%;">성명</th><th style="width:28%;">서명</th><th style="width:28%;">일자</th></tr></thead>
+      <tbody>
+        <tr><td>작성자</td><td></td><td></td><td></td></tr>
+        <tr><td>확인자</td><td></td><td></td><td></td></tr>
+      </tbody>
+    </table>`);
+
+  const titles = ['산정 개요','필요환기량 산출 결과','송배풍기 매칭 계획'];
+  if(r.mode==='B' || r.mode==='C') titles.push('정상상태(목표농도) 도달 예상 시간');
+  titles.push('작업허가자·안전관리자 최종 확인','안전 고지','참고 기준 및 출처','작성 및 확인');
+
+  const renderReportSection = (html,i) =>
+    `<section class="report-section report-section-${i+1}"><h3><span class="section-num">${i+1}</span><span>${titles[i]}</span></h3>${html}</section>`;
+  const tailStart = Math.max(0, sections.length-2);
+  body.innerHTML = sections.slice(0,tailStart).map(renderReportSection).join('\n')
+    + `<div class="report-tail">${sections.slice(tailStart).map((html,i)=>renderReportSection(html,tailStart+i)).join('\n')}</div>`
+    + `<div class="print-document-footer"><span>v0.2</span><span>계산 결과는 현장 측정과 사업장 작업허가 절차를 대체하지 않습니다.</span></div>`;
+  renderTranslatedReports();
+}
+
+function buildPermitChecklistHTML(){
+  return `
+    <div class="permit-checklist">
+      <div class="permit-check">
+        <div class="permit-check-head"><span class="check-num">1</span><span class="permit-check-title"><b>측정·기록</b><small>O₂·CO₂·CO·H₂S·LEL 및 작업별 유해물질</small></span></div>
+        <div class="permit-subcheck"><b>□ 측정·기록</b><span>작업 시작·재개 전 대상가스를 측정하고 결과·측정자·일시·장소 기록</span></div>
+        <div class="permit-subcheck"><b>□ 센서·측정자</b><span>지정 측정자, 교정·범프테스트, 센서 종류·유효기간, 상·중·하부 측정 확인</span></div>
+      </div>
+      <div class="permit-check">
+        <div class="permit-check-head"><span class="check-num">2</span><span class="permit-check-title"><b>격리·환기</b><small>배관·동력원 차단 후 작업 전·중 계속 환기</small></span></div>
+        <div class="permit-subcheck"><b>□ 격리·LOTO</b><span>연결 배관·밸브·동력원 차단, 잠금·표지, 유입·누출 가능성 제거</span></div>
+        <div class="permit-subcheck"><b>□ 환기설비</b><span>필요풍량·정압·덕트 배치, 전원·손상, 방폭 적합성, 작업 중 계속 가동 확인</span></div>
+      </div>
+      <div class="permit-check">
+        <div class="permit-check-head"><span class="check-num">3</span><span class="permit-check-title"><b>허가·감시</b><small>출입 전 확인사항 게시, 외부 감시인·연락설비</small></span></div>
+        <div class="permit-subcheck"><b>□ 작업정보·인원</b><span>장소·내용·시간, 관리감독자·작업자·감시인, 입·퇴장 인원 확인</span></div>
+        <div class="permit-subcheck"><b>□ 출입통제·감시</b><span>허가내용 출입구 게시, 출입금지 표지, 외부 감시인과 상시 연락설비 확인</span></div>
+      </div>
+      <div class="permit-check">
+        <div class="permit-check-head"><span class="check-num">4</span><span class="permit-check-title"><b>구조·대피</b><small>구조장비 사전 배치, 무보호 진입구조 금지</small></span></div>
+        <div class="permit-subcheck"><b>□ 보호구·구조</b><span>호흡보호구·안전대·구명줄·삼각대·사다리·구조장비와 구조방법 확인</span></div>
+        <div class="permit-subcheck"><b>□ 비상·작업중지</b><span>경보·이상징후 시 즉시 중지·대피, 신고·응급처치·무보호 구조금지 공유</span></div>
+      </div>
+    </div>
+    <p class="hint">□ 측정·평가 기록은 3년 보존　□ 확인사항은 작업 종료까지 출입구 게시　□ 구조훈련은 6개월마다 실시·기록</p>
+  `;
+}
+
+/* ------------------------------------------------------------
+   리포트 하단 "참고 기준 및 출처" 섹션 (인쇄 1장 기준, 현재 기준값만 표기)
+   법령 / KOSHA 기술지침(권장 최소기준) / 사업장 결정값을 구분해 표기
+   ------------------------------------------------------------ */
+function buildReferenceHTML(mode){
+  const guideLine = (mode==='A')
+    ? `최초 급기 체적 10배 이상 · 작업 중 20회/h 이상 계속 환기`
+    : `이상기체 몰부피(24.45 L/mol) 기반 일반 희석환기식 사용. 물질별 MSDS·노출기준과 안전계수 별도 확인`;
+
+  return `
+    <table class="report-source-table">
+      <colgroup><col style="width:20%;"><col style="width:80%;"></colgroup>
+      <tbody>
+        <tr><td>적정공기<br>(제618조)</td><td>O₂ 18% 이상 23.5% 미만 · CO₂ 1.5% 미만 · CO 30ppm 미만 · H₂S 10ppm 미만</td></tr>
+        <tr><td>가연성가스</td><td>LEL 10% 미만(KOSHA·작업허가 관리기준). 화기작업은 별도 허가·연속 확인</td></tr>
+        <tr><td>작업허가<br>(제619조)</td><td>작업·인원·측정결과·유입가능성·보호구·비상연락 확인 및 작업 종료까지 출입구 게시</td></tr>
+        <tr><td>측정·기록<br>(제619조의2)</td><td>작업 시작·재개 전 지정된 측정자가 평가, 결과·측정자·일시·장소를 기록하여 3년 보존</td></tr>
+        <tr><td>현장조치<br>(제620~625조)</td><td>작업 전·중 환기, 인원점검, 출입금지, 감시인·연락설비, 보호구·대피용 기구</td></tr>
+        <tr><td>비상조치<br>(제639·640조)</td><td>위험 시 즉시 작업중지·대피, 비상연락·구조장비·호흡보호구·응급처치 훈련 6개월 주기</td></tr>
+        <tr><td>KOSHA GUIDE<br>H-80-2021</td><td>${guideLine}</td></tr>
+      </tbody>
+    </table>
+    <p class="hint">목표농도·안전계수(K)·유효율은 법정 고정값이 아니라 MSDS, 위험성평가, 설비조건과 사업장 승인기준에 따라 결정합니다. 측정기의 센서 구성이 대상가스를 실제로 검지하는지 확인하십시오.</p>
+  `;
+}
+
+/* ------------------------------------------------------------
+   다국어 인쇄 보조 페이지
+   - 한국어 결과서가 법적·업무상 원본이며 번역 페이지는 이해 보조용
+   - 선택한 언어마다 인쇄 시 새 페이지를 추가
+   ------------------------------------------------------------ */
+const PRINT_I18N = {
+  en:{
+    name:'English / Filipino', title:'Confined Space Ventilation Pre-Review',
+    subtitle:'Supplementary Translation', disclaimer:'This translation is provided only to aid understanding. If there is any difference, the Korean original and the company standard procedure prevail.',
+    h:['Basic Information','Ventilation Plan','Ventilation Equipment Plan','Pre-work Review Points','Safety Notice'],
+    l:{date:'Date',space:'Work space',method:'Calculation method',volume:'Space volume',workers:'Workers',required:'Minimum required airflow',initial:'Initial purge volume',continuous:'Continuous airflow during work',supply:'Planned total airflow',margin:'Reserve margin',equipment:'Equipment',rated:'Rated airflow',basis:'Airflow basis',explosion:'Explosion-proof',applied:'Applied airflow',qty:'Planned quantity',prepared:'Prepared by',reviewed:'Reviewed by'},
+    modes:{A:'Volume exchange method',B:'Dilution method (known generation rate)',C:'Dilution method (measurement-based estimate)'},
+    methods:{estimate:'Simple efficiency correction',manufacturer:'Manufacturer operating point',measured:'Field-measured airflow'},
+    checks:[
+      ['Measurement and records','Check O₂, CO₂, CO, H₂S, LEL and task-specific hazards before entry or re-entry.'],
+      ['Isolation and ventilation','Isolate pipes and energy sources, then maintain continuous ventilation before and during work.'],
+      ['Permit and attendant','Post required information at the entrance and maintain an outside attendant and communication.'],
+      ['Rescue and evacuation','Prepare rescue equipment in advance. Do not enter for rescue without respiratory protection.']
+    ],
+    safety:'This document is a pre-work ventilation planning reference. Never authorize entry based on calculations alone. Before entry or re-entry, measure and evaluate the atmosphere and follow the company work-permit procedure.'
+  },
+  zh:{
+    name:'简体中文', title:'密闭空间通风量预审结果',
+    subtitle:'辅助翻译页', disclaimer:'本译文仅用于帮助理解。如有差异，以韩文原件和公司标准程序为准。',
+    h:['基本信息','通风计划','通风设备计划','作业前确认事项','安全提示'],
+    l:{date:'编制日期',space:'作业空间',method:'计算方法',volume:'空间容积',workers:'作业人数',required:'最低所需风量',initial:'初始送风量',continuous:'作业中持续风量',supply:'计划总供风量',margin:'余量',equipment:'设备名称',rated:'额定风量',basis:'风量依据',explosion:'防爆',applied:'采用风量',qty:'计划台数',prepared:'编制人',reviewed:'确认人'},
+    modes:{A:'体积换气法',B:'稀释法（已知发生量）',C:'稀释法（根据测量值推算）'},
+    methods:{estimate:'简易效率修正',manufacturer:'制造商运行点',measured:'现场实测风量'},
+    checks:[
+      ['测量与记录','进入或重新进入前，确认 O₂、CO₂、CO、H₂S、LEL 及作业相关有害物质。'],
+      ['隔离与通风','隔离管线和动力源，并在作业前及作业中保持连续通风。'],
+      ['许可与监护','在入口张贴确认事项，设置外部监护人并保持通信。'],
+      ['救援与撤离','提前配备救援器材。禁止在无呼吸防护的情况下进入救援。']
+    ],
+    safety:'本文件仅用于作业前通风计划审查。不得仅凭计算结果批准进入。进入或重新进入前，必须测量并评估空气状态，并遵守公司的作业许可程序。'
+  },
+  ja:{
+    name:'日本語', title:'閉所作業 換気量事前検討結果',
+    subtitle:'参考翻訳ページ', disclaimer:'この翻訳は理解を補助するためのものです。相違がある場合は、韓国語原本および会社の標準手順を優先します。',
+    h:['基本情報','換気計画','送排風機計画','作業前確認事項','安全上の注意'],
+    l:{date:'作成日',space:'作業場所',method:'計算方法',volume:'空間容積',workers:'作業人数',required:'最低必要風量',initial:'初期給気量',continuous:'作業中連続風量',supply:'計画総供給風量',margin:'余裕率',equipment:'機器名',rated:'定格風量',basis:'風量根拠',explosion:'防爆',applied:'適用風量',qty:'計画台数',prepared:'作成者',reviewed:'確認者'},
+    modes:{A:'体積交換法',B:'希釈法（発生量既知）',C:'希釈法（測定値から推定）'},
+    methods:{estimate:'簡易効率補正',manufacturer:'メーカー運転点',measured:'現場実測風量'},
+    checks:[
+      ['測定・記録','入場または再入場前に O₂、CO₂、CO、H₂S、LEL および作業別有害物質を確認します。'],
+      ['隔離・換気','配管と動力源を隔離し、作業前および作業中は連続換気を維持します。'],
+      ['許可・監視','入口に確認事項を掲示し、外部監視人と連絡手段を維持します。'],
+      ['救助・避難','救助用具を事前に配置し、呼吸用保護具なしで救助のために進入しないでください。']
+    ],
+    safety:'本書は作業前の換気計画を検討するための参考資料です。計算結果だけで入場を許可しないでください。入場・再入場前に空気状態を測定・評価し、会社の作業許可手順に従ってください。'
+  },
+  vi:{
+    name:'Tiếng Việt', title:'Kết quả xem xét sơ bộ thông gió trong không gian hạn chế',
+    subtitle:'Trang dịch hỗ trợ', disclaimer:'Bản dịch này chỉ nhằm hỗ trợ việc hiểu nội dung. Nếu có khác biệt, bản tiếng Hàn và quy trình tiêu chuẩn của công ty được ưu tiên.',
+    h:['Thông tin cơ bản','Kế hoạch thông gió','Kế hoạch thiết bị thông gió','Nội dung kiểm tra trước khi làm việc','Cảnh báo an toàn'],
+    l:{date:'Ngày lập',space:'Không gian làm việc',method:'Phương pháp tính',volume:'Thể tích không gian',workers:'Số người làm việc',required:'Lưu lượng tối thiểu cần thiết',initial:'Thể tích cấp khí ban đầu',continuous:'Lưu lượng liên tục khi làm việc',supply:'Tổng lưu lượng dự kiến',margin:'Tỷ lệ dự phòng',equipment:'Thiết bị',rated:'Lưu lượng định mức',basis:'Cơ sở lưu lượng',explosion:'Chống nổ',applied:'Lưu lượng áp dụng',qty:'Số lượng dự kiến',prepared:'Người lập',reviewed:'Người kiểm tra'},
+    modes:{A:'Phương pháp trao đổi thể tích',B:'Phương pháp pha loãng (biết lượng phát sinh)',C:'Phương pháp pha loãng (ước tính từ đo đạc)'},
+    methods:{estimate:'Hiệu chỉnh hiệu suất đơn giản',manufacturer:'Điểm làm việc của nhà sản xuất',measured:'Lưu lượng đo tại hiện trường'},
+    checks:[
+      ['Đo và ghi chép','Kiểm tra O₂, CO₂, CO, H₂S, LEL và chất nguy hại theo công việc trước khi vào hoặc vào lại.'],
+      ['Cô lập và thông gió','Cô lập đường ống, nguồn năng lượng và duy trì thông gió liên tục trước và trong khi làm việc.'],
+      ['Giấy phép và giám sát','Niêm yết nội dung xác nhận tại lối vào, bố trí người giám sát bên ngoài và duy trì liên lạc.'],
+      ['Cứu hộ và sơ tán','Chuẩn bị trước thiết bị cứu hộ. Không vào cứu hộ khi không có bảo vệ hô hấp.']
+    ],
+    safety:'Tài liệu này chỉ dùng để xem xét kế hoạch thông gió trước công việc. Không được cho phép vào chỉ dựa trên kết quả tính toán. Trước khi vào hoặc vào lại, phải đo và đánh giá không khí, đồng thời tuân theo quy trình giấy phép làm việc của công ty.'
+  },
+  th:{
+    name:'ไทย', title:'ผลการทบทวนแผนระบายอากาศก่อนทำงานในที่อับอากาศ',
+    subtitle:'หน้าแปลประกอบ', disclaimer:'คำแปลนี้จัดทำเพื่อช่วยให้เข้าใจเท่านั้น หากมีความแตกต่าง ให้ยึดเอกสารภาษาเกาหลีและขั้นตอนมาตรฐานของบริษัท',
+    h:['ข้อมูลพื้นฐาน','แผนการระบายอากาศ','แผนอุปกรณ์ระบายอากาศ','รายการตรวจสอบก่อนทำงาน','คำเตือนด้านความปลอดภัย'],
+    l:{date:'วันที่จัดทำ',space:'พื้นที่ทำงาน',method:'วิธีคำนวณ',volume:'ปริมาตรพื้นที่',workers:'จำนวนผู้ปฏิบัติงาน',required:'ปริมาณลมขั้นต่ำที่ต้องการ',initial:'ปริมาณลมเริ่มต้น',continuous:'ปริมาณลมต่อเนื่องระหว่างทำงาน',supply:'ปริมาณลมรวมตามแผน',margin:'อัตราสำรอง',equipment:'อุปกรณ์',rated:'ปริมาณลมพิกัด',basis:'ที่มาของปริมาณลม',explosion:'ป้องกันการระเบิด',applied:'ปริมาณลมที่ใช้',qty:'จำนวนตามแผน',prepared:'ผู้จัดทำ',reviewed:'ผู้ตรวจสอบ'},
+    modes:{A:'วิธีเปลี่ยนถ่ายตามปริมาตร',B:'วิธีเจือจาง (ทราบอัตราการเกิด)',C:'วิธีเจือจาง (ประมาณจากการตรวจวัด)'},
+    methods:{estimate:'ปรับค่าประสิทธิภาพแบบง่าย',manufacturer:'จุดทำงานจากผู้ผลิต',measured:'ปริมาณลมที่วัดจริงหน้างาน'},
+    checks:[
+      ['การตรวจวัดและบันทึก','ตรวจ O₂, CO₂, CO, H₂S, LEL และสารอันตรายเฉพาะงานก่อนเข้าและก่อนกลับเข้าไปทำงาน'],
+      ['การแยกและระบายอากาศ','แยกท่อและแหล่งพลังงาน และระบายอากาศอย่างต่อเนื่องก่อนและระหว่างทำงาน'],
+      ['การอนุญาตและผู้เฝ้าระวัง','ติดประกาศข้อมูลที่ทางเข้า จัดผู้เฝ้าระวังภายนอกและรักษาการสื่อสาร'],
+      ['การกู้ภัยและอพยพ','เตรียมอุปกรณ์กู้ภัยล่วงหน้า ห้ามเข้าไปกู้ภัยโดยไม่มีอุปกรณ์ป้องกันระบบหายใจ']
+    ],
+    safety:'เอกสารนี้ใช้เป็นข้อมูลอ้างอิงสำหรับการวางแผนระบายอากาศก่อนทำงานเท่านั้น ห้ามอนุญาตให้เข้าโดยอาศัยผลคำนวณเพียงอย่างเดียว ก่อนเข้าและก่อนกลับเข้า ต้องตรวจวัดและประเมินอากาศ และปฏิบัติตามขั้นตอนใบอนุญาตทำงานของบริษัท'
+  },
+  id:{
+    name:'Bahasa Indonesia', title:'Hasil Tinjauan Awal Ventilasi Ruang Terbatas',
+    subtitle:'Halaman Terjemahan Pendukung', disclaimer:'Terjemahan ini hanya untuk membantu pemahaman. Jika terdapat perbedaan, dokumen asli bahasa Korea dan prosedur standar perusahaan yang berlaku.',
+    h:['Informasi Dasar','Rencana Ventilasi','Rencana Peralatan Ventilasi','Pemeriksaan Sebelum Kerja','Peringatan Keselamatan'],
+    l:{date:'Tanggal',space:'Ruang kerja',method:'Metode perhitungan',volume:'Volume ruang',workers:'Jumlah pekerja',required:'Aliran udara minimum',initial:'Volume purging awal',continuous:'Aliran udara kontinu saat bekerja',supply:'Total aliran udara rencana',margin:'Margin cadangan',equipment:'Peralatan',rated:'Aliran udara terukur',basis:'Dasar aliran udara',explosion:'Tahan ledakan',applied:'Aliran udara yang digunakan',qty:'Jumlah rencana',prepared:'Dibuat oleh',reviewed:'Diperiksa oleh'},
+    modes:{A:'Metode pertukaran volume',B:'Metode pengenceran (laju timbulan diketahui)',C:'Metode pengenceran (perkiraan dari pengukuran)'},
+    methods:{estimate:'Koreksi efisiensi sederhana',manufacturer:'Titik operasi pabrikan',measured:'Aliran udara hasil pengukuran lapangan'},
+    checks:[
+      ['Pengukuran dan catatan','Periksa O₂, CO₂, CO, H₂S, LEL dan bahaya khusus pekerjaan sebelum masuk atau masuk kembali.'],
+      ['Isolasi dan ventilasi','Isolasi pipa dan sumber energi, lalu pertahankan ventilasi terus-menerus sebelum dan selama bekerja.'],
+      ['Izin dan pengawas','Pasang informasi di pintu masuk serta sediakan pengawas luar dan komunikasi.'],
+      ['Penyelamatan dan evakuasi','Siapkan peralatan penyelamatan. Jangan masuk untuk menolong tanpa pelindung pernapasan.']
+    ],
+    safety:'Dokumen ini hanya referensi perencanaan ventilasi sebelum kerja. Jangan mengizinkan masuk hanya berdasarkan hasil perhitungan. Sebelum masuk atau masuk kembali, ukur dan evaluasi udara serta ikuti prosedur izin kerja perusahaan.'
+  },
+  mn:{
+    name:'Монгол', title:'Хаалттай орчны агааржуулалтын урьдчилсан үнэлгээ',
+    subtitle:'Туслах орчуулга', disclaimer:'Энэ орчуулга нь зөвхөн ойлголтод туслах зориулалттай. Зөрүү гарвал солонгос эх хувь болон компанийн стандарт журмыг баримтална.',
+    h:['Үндсэн мэдээлэл','Агааржуулалтын төлөвлөгөө','Агааржуулах төхөөрөмжийн төлөвлөгөө','Ажил эхлэхийн өмнөх шалгалт','Аюулгүй ажиллагааны анхааруулга'],
+    l:{date:'Огноо',space:'Ажлын орон зай',method:'Тооцооны арга',volume:'Орон зайн эзлэхүүн',workers:'Ажилтны тоо',required:'Шаардлагатай хамгийн бага агаарын урсгал',initial:'Эхний үлээлтийн эзлэхүүн',continuous:'Ажлын үеийн тасралтгүй урсгал',supply:'Төлөвлөсөн нийт урсгал',margin:'Нөөц хувь',equipment:'Төхөөрөмж',rated:'Нэрлэсэн урсгал',basis:'Урсгалын үндэслэл',explosion:'Тэсрэлтээс хамгаалсан',applied:'Хэрэглэх урсгал',qty:'Төлөвлөсөн тоо',prepared:'Бэлтгэсэн',reviewed:'Хянасан'},
+    modes:{A:'Эзлэхүүн солилцох арга',B:'Шингэрүүлэх арга (үүсэлтийн хэмжээ мэдэгдсэн)',C:'Шингэрүүлэх арга (хэмжилтэд тулгуурласан)'},
+    methods:{estimate:'Энгийн үр ашгийн засвар',manufacturer:'Үйлдвэрлэгчийн ажлын цэг',measured:'Талбайд хэмжсэн агаарын урсгал'},
+    checks:[
+      ['Хэмжилт ба бүртгэл','Орох болон дахин орохын өмнө O₂, CO₂, CO, H₂S, LEL болон ажлын онцлог аюулыг шалгана.'],
+      ['Тусгаарлалт ба агааржуулалт','Шугам хоолой, эрчим хүчний эх үүсвэрийг тусгаарлаж, ажлын өмнө ба явцад тасралтгүй агааржуулна.'],
+      ['Зөвшөөрөл ба хяналт','Орох хэсэгт мэдээллийг байршуулж, гадна хянагч болон холбоог байнга хангана.'],
+      ['Аврах ба нүүлгэн шилжүүлэх','Аврах хэрэгслийг урьдчилан бэлтгэнэ. Амьсгалын хамгаалалтгүйгээр аврахаар бүү ор.']
+    ],
+    safety:'Энэ баримт нь ажлын өмнөх агааржуулалтын төлөвлөлтийн лавлагаа юм. Зөвхөн тооцоонд үндэслэн орох зөвшөөрөл бүү олго. Орох болон дахин орохын өмнө агаарыг хэмжиж үнэлээд компанийн ажлын зөвшөөрлийн журмыг мөрдөнө.'
+  },
+  my:{
+    name:'မြန်မာ', title:'ပိတ်လှောင်နေရာ လေဝင်လေထွက် ကြိုတင်သုံးသပ်ချက်',
+    subtitle:'အထောက်အကူပြု ဘာသာပြန်စာမျက်နှာ', disclaimer:'ဤဘာသာပြန်သည် နားလည်ရန် အထောက်အကူအဖြစ်သာ ဖြစ်သည်။ ကွာခြားမှုရှိပါက ကိုရီးယားမူရင်းနှင့် ကုမ္ပဏီ၏ စံလုပ်ထုံးလုပ်နည်းကို ဦးစားပေးရမည်။',
+    h:['အခြေခံအချက်အလက်','လေဝင်လေထွက်အစီအစဉ်','လေဝင်လေထွက်စက်ကိရိယာအစီအစဉ်','အလုပ်မစမီ စစ်ဆေးချက်များ','ဘေးကင်းရေးသတိပေးချက်'],
+    l:{date:'ရက်စွဲ',space:'အလုပ်နေရာ',method:'တွက်ချက်နည်း',volume:'နေရာထုထည်',workers:'အလုပ်သမားဦးရေ',required:'အနည်းဆုံးလိုအပ်သော လေစီးနှုန်း',initial:'ကနဦးလေသွင်းထုထည်',continuous:'အလုပ်အတွင်း ဆက်တိုက်လေစီးနှုန်း',supply:'စီစဉ်ထားသော စုစုပေါင်းလေစီးနှုန်း',margin:'အပိုနှုန်း',equipment:'စက်ကိရိယာ',rated:'သတ်မှတ်လေစီးနှုန်း',basis:'လေစီးနှုန်းအခြေခံ',explosion:'ပေါက်ကွဲမှုကာကွယ်',applied:'အသုံးပြုလေစီးနှုန်း',qty:'စီစဉ်အရေအတွက်',prepared:'ပြုစုသူ',reviewed:'စစ်ဆေးသူ'},
+    modes:{A:'ထုထည်လဲလှယ်နည်း',B:'ရောနှောလျော့ချနည်း (ထွက်ရှိနှုန်းသိ)',C:'ရောနှောလျော့ချနည်း (တိုင်းတာချက်အခြေခံ)'},
+    methods:{estimate:'ရိုးရှင်းသော ထိရောက်မှုညှိနှိုင်း',manufacturer:'ထုတ်လုပ်သူ လည်ပတ်အမှတ်',measured:'လုပ်ငန်းခွင် တိုင်းတာလေစီးနှုန်း'},
+    checks:[
+      ['တိုင်းတာခြင်းနှင့် မှတ်တမ်း','ဝင်ရောက်ခြင်း သို့မဟုတ် ပြန်လည်ဝင်ရောက်ခြင်းမပြုမီ O₂, CO₂, CO, H₂S, LEL နှင့် အလုပ်ဆိုင်ရာအန္တရာယ်များကို စစ်ဆေးပါ။'],
+      ['ခွဲထုတ်ခြင်းနှင့် လေဝင်လေထွက်','ပိုက်လိုင်းနှင့် စွမ်းအင်ရင်းမြစ်များကို ခွဲထုတ်ပြီး အလုပ်မစမီနှင့် အလုပ်အတွင်း ဆက်တိုက်လေသွင်းပါ။'],
+      ['ခွင့်ပြုချက်နှင့် စောင့်ကြည့်သူ','ဝင်ပေါက်တွင် အချက်အလက်ကပ်ထားပြီး အပြင်ဘက်စောင့်ကြည့်သူနှင့် ဆက်သွယ်ရေးကို ထိန်းသိမ်းပါ။'],
+      ['ကယ်ဆယ်ရေးနှင့် ထွက်ခွာရေး','ကယ်ဆယ်ရေးကိရိယာကို ကြိုတင်ပြင်ဆင်ပါ။ အသက်ရှူကာကွယ်ရေးမပါဘဲ ကယ်ဆယ်ရန် မဝင်ရောက်ပါနှင့်။']
+    ],
+    safety:'ဤစာတမ်းသည် အလုပ်မစမီ လေဝင်လေထွက်အစီအစဉ်အတွက် ရည်ညွှန်းချက်သာဖြစ်သည်။ တွက်ချက်ချက်တစ်ခုတည်းဖြင့် ဝင်ခွင့်မပြုပါနှင့်။ ဝင်ရောက်ခြင်း သို့မဟုတ် ပြန်လည်ဝင်ရောက်ခြင်းမပြုမီ လေထုကို တိုင်းတာအကဲဖြတ်ပြီး ကုမ္ပဏီ၏ အလုပ်ခွင့်ပြုလုပ်ထုံးလုပ်နည်းကို လိုက်နာပါ။'
+  },
+  km:{
+    name:'ខ្មែរ', title:'លទ្ធផលពិនិត្យជាមុននៃការបញ្ចេញខ្យល់ក្នុងទីកន្លែងបិទជិត',
+    subtitle:'ទំព័របកប្រែជំនួយ', disclaimer:'ការបកប្រែនេះសម្រាប់ជួយការយល់ដឹងប៉ុណ្ណោះ។ ប្រសិនបើមានភាពខុសគ្នា ត្រូវយកឯកសារភាសាកូរ៉េ និងនីតិវិធីស្តង់ដាររបស់ក្រុមហ៊ុនជាគោល។',
+    h:['ព័ត៌មានមូលដ្ឋាន','ផែនការបញ្ចេញខ្យល់','ផែនការឧបករណ៍បញ្ចេញខ្យល់','ចំណុចត្រួតពិនិត្យមុនធ្វើការ','ការព្រមានសុវត្ថិភាព'],
+    l:{date:'កាលបរិច្ឆេទ',space:'កន្លែងធ្វើការ',method:'វិធីគណនា',volume:'មាឌកន្លែង',workers:'ចំនួនកម្មករ',required:'លំហូរខ្យល់អប្បបរមា',initial:'មាឌខ្យល់ដំបូង',continuous:'លំហូរខ្យល់បន្តពេលធ្វើការ',supply:'លំហូរខ្យល់សរុបតាមផែនការ',margin:'អត្រាបម្រុង',equipment:'ឧបករណ៍',rated:'លំហូរខ្យល់កំណត់',basis:'មូលដ្ឋានលំហូរខ្យល់',explosion:'ការពារការផ្ទុះ',applied:'លំហូរខ្យល់ប្រើប្រាស់',qty:'ចំនួនតាមផែនការ',prepared:'អ្នករៀបចំ',reviewed:'អ្នកពិនិត្យ'},
+    modes:{A:'វិធីប្តូរមាឌខ្យល់',B:'វិធីពង្រាវ (ដឹងអត្រាបង្កើត)',C:'វិធីពង្រាវ (ប៉ាន់ស្មានតាមការវាស់)'},
+    methods:{estimate:'កែតម្រូវប្រសិទ្ធភាពសាមញ្ញ',manufacturer:'ចំណុចប្រតិបត្តិការរបស់ក្រុមហ៊ុនផលិត',measured:'លំហូរខ្យល់វាស់នៅទីតាំង'},
+    checks:[
+      ['ការវាស់ និងកត់ត្រា','ពិនិត្យ O₂, CO₂, CO, H₂S, LEL និងគ្រោះថ្នាក់តាមប្រភេទការងារ មុនចូល ឬចូលឡើងវិញ។'],
+      ['ការផ្តាច់ និងបញ្ចេញខ្យល់','ផ្តាច់បំពង់ និងប្រភពថាមពល ហើយរក្សាការបញ្ចេញខ្យល់ជាបន្ត មុន និងក្នុងពេលធ្វើការ។'],
+      ['ការអនុញ្ញាត និងអ្នកឃ្លាំមើល','បិទផ្សាយព័ត៌មាននៅច្រកចូល រៀបចំអ្នកឃ្លាំមើលខាងក្រៅ និងរក្សាការទំនាក់ទំនង។'],
+      ['ការសង្គ្រោះ និងជម្លៀស','រៀបចំឧបករណ៍សង្គ្រោះជាមុន។ ហាមចូលសង្គ្រោះដោយគ្មានឧបករណ៍ការពារដង្ហើម។']
+    ],
+    safety:'ឯកសារនេះជាឯកសារយោងសម្រាប់ផែនការបញ្ចេញខ្យល់មុនធ្វើការប៉ុណ្ណោះ។ មិនត្រូវអនុញ្ញាតឱ្យចូលដោយផ្អែកលើលទ្ធផលគណនាតែប៉ុណ្ណោះ។ មុនចូល ឬចូលឡើងវិញ ត្រូវវាស់ និងវាយតម្លៃខ្យល់ ហើយអនុវត្តតាមនីតិវិធីលិខិតអនុញ្ញាតការងាររបស់ក្រុមហ៊ុន។'
+  }
+};
+
+function getSelectedPrintLanguages(){
+  return Array.from(document.querySelectorAll('input[name="print-lang"]:checked')).map(el=>el.value);
+}
+function escapeReportText(value){
+  return String(value===undefined || value===null ? '' : value)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+const PRINT_LANGUAGE_KO = {
+  en:'영어·필리핀어', zh:'중국어(간체)', ja:'일본어', vi:'베트남어',
+  th:'태국어', id:'인도네시아어', mn:'몽골어', my:'미얀마어', km:'크메르어'
+};
+const PRINT_SIGN_LABELS = {
+  en:{role:'Role',name:'Name',sign:'Signature',date:'Date'},
+  zh:{role:'区分',name:'姓名',sign:'签名',date:'日期'},
+  ja:{role:'区分',name:'氏名',sign:'署名',date:'日付'},
+  vi:{role:'Vai trò',name:'Họ tên',sign:'Chữ ký',date:'Ngày'},
+  th:{role:'หน้าที่',name:'ชื่อ',sign:'ลายเซ็น',date:'วันที่'},
+  id:{role:'Peran',name:'Nama',sign:'Tanda tangan',date:'Tanggal'},
+  mn:{role:'Үүрэг',name:'Нэр',sign:'Гарын үсэг',date:'Огноо'},
+  my:{role:'တာဝန်',name:'အမည်',sign:'လက်မှတ်',date:'ရက်စွဲ'},
+  km:{role:'តួនាទី',name:'ឈ្មោះ',sign:'ហត្ថលេខា',date:'កាលបរិច្ឆេទ'}
+};
+const PRINT_CRITERIA_I18N = {
+  en:{label:'Applied criterion',volume:(m,a)=>`Initial ${m}× · During work ${a} ACH`,dilution:k=>`Dilution equation · Safety factor K=${k}`},
+  zh:{label:'适用通风标准',volume:(m,a)=>`初始送风 ${m} 倍 · 作业中 ${a} 次/h`,dilution:k=>`稀释通风公式 · 安全系数 K=${k}`},
+  ja:{label:'適用換気基準',volume:(m,a)=>`初期給気 ${m}倍 · 作業中 ${a}回/h`,dilution:k=>`希釈換気式 · 安全係数 K=${k}`},
+  vi:{label:'Tiêu chí áp dụng',volume:(m,a)=>`Ban đầu ${m} lần · Khi làm việc ${a} lần/h`,dilution:k=>`Công thức pha loãng · Hệ số an toàn K=${k}`},
+  th:{label:'เกณฑ์การระบายอากาศ',volume:(m,a)=>`เริ่มต้น ${m} เท่า · ระหว่างทำงาน ${a} ครั้ง/ชม.`,dilution:k=>`สมการเจือจาง · ค่าความปลอดภัย K=${k}`},
+  id:{label:'Kriteria yang diterapkan',volume:(m,a)=>`Awal ${m} kali · Saat bekerja ${a} kali/jam`,dilution:k=>`Persamaan pengenceran · Faktor keselamatan K=${k}`},
+  mn:{label:'Хэрэглэх шалгуур',volume:(m,a)=>`Эхний ${m} дахин · Ажлын үед ${a} удаа/цаг`,dilution:k=>`Шингэрүүлэлтийн томьёо · Аюулгүйн K=${k}`},
+  my:{label:'အသုံးပြု စံနှုန်း',volume:(m,a)=>`ကနဦး ${m} ဆ · အလုပ်ချိန် ${a} ကြိမ်/နာရီ`,dilution:k=>`ရောနှောလျော့ချမှု တွက်ချက်ပုံ · ဘေးကင်းရေး K=${k}`},
+  km:{label:'លក្ខណៈវិនិច្ឆ័យអនុវត្ត',volume:(m,a)=>`ដំបូង ${m} ដង · ពេលធ្វើការ ${a} ដង/ម៉ោង`,dilution:k=>`សមីការបន្សាប · កត្តាសុវត្ថិភាព K=${k}`}
+};
+
+function renderTranslatedReports(){
+  const host = document.getElementById('translated-reports');
+  if(!host) return;
+  const selected = getSelectedPrintLanguages();
+  if(!selected.length){ host.innerHTML=''; return; }
+
+  const r = state.result || {};
+  const requiredQ = getRequiredQ();
+  const totalSupply = state.fans.reduce((sum,f)=>sum+getFanEffective(f)*(parseFloat(f.qty)||0),0);
+  const margin = requiredQ>0 ? (((totalSupply/requiredQ)-1)*100).toFixed(1)+'%' : '-';
+  const workers = document.getElementById('worker-count').value || '-';
+  const spaceName = document.getElementById('space-name').value || '-';
+  const now = new Date();
+  const dateStr = now.getFullYear()+'.'+String(now.getMonth()+1).padStart(2,'0')+'.'+String(now.getDate()).padStart(2,'0');
+  const formatCriterionNumber = value=>{
+    const number = Number(value);
+    if(!Number.isFinite(number)) return '-';
+    return Number.isInteger(number) ? String(number) : number.toFixed(1);
+  };
+  const multiplier = formatCriterionNumber(document.getElementById('a-multiplier')?.value || 10);
+  const ach = formatCriterionNumber(document.getElementById('a-ach')?.value || 20);
+  const safetyFactor = formatCriterionNumber(document.getElementById(r.mode==='C'?'c-k':'b-k')?.value || 1);
+
+  host.innerHTML = selected.map(code=>{
+    const t = PRINT_I18N[code];
+    if(!t) return '';
+    const sl = PRINT_SIGN_LABELS[code] || PRINT_SIGN_LABELS.en;
+    const ci = PRINT_CRITERIA_I18N[code] || PRINT_CRITERIA_I18N.en;
+    const criterionText = r.mode==='A' ? ci.volume(multiplier,ach) : ci.dilution(safetyFactor);
+    const fanRows = state.fans.map(f=>{
+      const effective = getFanEffective(f);
+      return `<tr><td>${escapeReportText(f.name||'-')}</td><td>${Number(f.rated||0).toFixed(1)}</td><td>${t.methods[f.flowMethod||'estimate']}</td><td>${f.explosion?'O':'-'}</td><td>${effective.toFixed(1)}</td><td>${Number(f.qty||0)}</td></tr>`;
+    }).join('') || `<tr><td colspan="6">-</td></tr>`;
+    let ventilationRows = '';
+    if(r.mode==='A'){
+      ventilationRows = `<div class="kv"><div>${t.l.initial}</div><div>${Number(r.initial||0).toFixed(2)} ㎥</div></div><div class="kv"><div>${t.l.continuous}</div><div>${Number(r.sustained||0).toFixed(2)} ㎥/h</div></div>`;
+    } else {
+      ventilationRows = `<div class="kv"><div>${t.l.required}</div><div>${Number(requiredQ||0).toFixed(2)} ㎥/h</div></div>`;
+    }
+    const checks = t.checks.map(c=>`<div class="translated-check"><b>□ ${c[0]}</b>${c[1]}</div>`).join('');
+    const translatedOk = requiredQ>0 && totalSupply>=requiredQ;
+    return `<section class="translated-report" lang="${code}" data-language="${code}">
+      <div class="translated-title"><span class="translated-title-main"><small>PRE-WORK VENTILATION REVIEW</small>${t.title}</span><small><b>${PRINT_LANGUAGE_KO[code]||code} / ${t.name}</b><br>${t.subtitle}</small></div>
+      <div class="translated-disclaimer">${t.disclaimer}</div>
+      <h3><span>1</span>${t.h[0]}</h3>
+      <div class="translated-overview-grid">
+        <div class="kv date"><div>${t.l.date}</div><div>${dateStr}</div></div>
+        <div class="kv space"><div>${t.l.space}</div><div>${escapeReportText(spaceName)}</div></div>
+        <div class="kv workers"><div>${t.l.workers}</div><div>${escapeReportText(workers)}</div></div>
+        <div class="kv method"><div>${t.l.method}</div><div>${t.modes[r.mode]||'-'}</div></div>
+        <div class="kv volume"><div>${t.l.volume}</div><div>${Number(state.volume||0).toFixed(2)} ㎥</div></div>
+        <div class="kv criteria"><div>${ci.label}</div><div>${criterionText}</div></div>
+      </div>
+      <h3><span>2</span>${t.h[1]}</h3>${ventilationRows}
+      <div class="kv"><div>${t.l.supply}</div><div>${totalSupply.toFixed(2)} ㎥/h</div></div>
+      <div class="kv"><div>${t.l.margin}</div><div>${margin}</div></div>
+      <div class="translated-key-metrics">
+        <div><span>${t.l.required}</span><b>${requiredQ.toFixed(1)} ㎥/h</b></div>
+        <div><span>${t.l.supply}</span><b>${totalSupply.toFixed(1)} ㎥/h</b></div>
+        <div><span>${t.l.margin}</span><b>${margin}</b></div>
+        <div class="${translatedOk?'ok':'bad'}"><span>Status</span><b>${translatedOk?'OK':'REVIEW'}</b></div>
+      </div>
+      <h3><span>3</span>${t.h[2]}</h3>
+      <table class="translated-equipment-table"><thead><tr><th>${t.l.equipment}</th><th>${t.l.rated}</th><th>${t.l.basis}</th><th>${t.l.explosion}</th><th>${t.l.applied}</th><th>${t.l.qty}</th></tr></thead><tbody>${fanRows}</tbody></table>
+      <h3><span>4</span>${t.h[3]}</h3><div class="translated-checks">${checks}</div>
+      <h3><span>5</span>${t.h[4]}</h3><div class="note danger">${t.safety}</div>
+      <table class="sig-table translated-signature-table">
+        <thead><tr><th style="width:16%;">${sl.role}</th><th style="width:28%;">${sl.name}</th><th style="width:28%;">${sl.sign}</th><th style="width:28%;">${sl.date}</th></tr></thead>
+        <tbody><tr><td>${t.l.prepared}</td><td></td><td></td><td></td></tr><tr><td>${t.l.reviewed}</td><td></td><td></td><td></td></tr></tbody>
+      </table>
+      <div class="translated-document-footer"><span>v0.2</span><span>${t.subtitle}</span></div>
+    </section>`;
+  }).join('');
+}
+
+/* ============================================================
+   공간별 세션 저장 / 불러오기 (다중 밀폐공간 이력 관리)
+   화면에 입력된 모든 값을 JSON으로 내보내고, 다시 불러와 복원한다.
+============================================================ */
+function serializeSession(){
+  const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  return {
+    fileFormat: 'confined-space-session',
+    version: 3,
+    spaceName: g('space-name'),
+    savedAt: new Date().toISOString(),
+    mode: state.mode,
+    workerCount: g('worker-count'),
+    spaceRatio: g('space-ratio'),
+    zones: state.zones.map(z => ({
+      name: z.name, shape: z.shape, sign: z.sign,
+      vals: z.vals, polyPoints: z.polyPoints, polyH: z.polyH
+    })),
+    inputs: {
+      aMultiplier: g('a-multiplier'), aAch: g('a-ach'),
+      bW: g('b-w'), bM: g('b-m'), bTlv: g('b-tlv'), bK: g('b-k'),
+      cQ: g('c-q'), cT: g('c-t'), cC0: g('c-c0'), cCt: g('c-ct'), cCallow: g('c-callow'), cK: g('c-k')
+    },
+    printLanguages: getSelectedPrintLanguages(),
+    fans: state.fans.map(f => ({
+      name:f.name, rated:f.rated, eff:f.eff,
+      flowMethod:f.flowMethod||'estimate', appliedFlow:f.appliedFlow||0,
+      ductDiameter:f.ductDiameter||0, ductLength:f.ductLength||0,
+      bendCount:f.bendCount||0, staticPressure:f.staticPressure||0,
+      advancedNote:f.advancedNote||'',
+      explosion:f.explosion, qty:f.qty
+    }))
+  };
+}
+
+function restoreSession(data){
+  if(!data || typeof data !== 'object'){ alert('올바른 세션 파일이 아닙니다.'); return; }
+  const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = (val!==undefined && val!==null) ? val : ''; };
+
+  set('space-name', data.spaceName);
+  set('worker-count', data.workerCount);
+  set('space-ratio', data.spaceRatio!==undefined ? data.spaceRatio : 100);
+
+  // 구버전(v1) 세션 호환: 단일 도형 필드를 구역 1개로 변환
+  if(data.zones && data.zones.length){
+    state.zones = data.zones.map(z => ({
+      id: state.zoneIdSeq++,
+      name: z.name||'', shape: z.shape||'box', sign: z.sign===-1?-1:1,
+      vals: z.vals||{}, polyPoints: z.polyPoints||[], polyH: z.polyH||'', volume:0
+    }));
+  } else if(data.inputs && (data.inputs.vDirect || data.inputs.boxL || data.inputs.cylR || data.inputs.polyPoints)){
+    const oldShape = data.shape || 'direct';
+    const oi = data.inputs;
+    let vals = {};
+    if(oldShape==='direct') vals = {v: parseFloat(oi.vDirect)||0};
+    else if(oldShape==='box') vals = {l:parseFloat(oi.boxL)||0, w:parseFloat(oi.boxW)||0, h:parseFloat(oi.boxH)||0};
+    else if(oldShape==='cyl') vals = {r:parseFloat(oi.cylR)||0, h:parseFloat(oi.cylH)||0};
+    state.zones = [{
+      id: state.zoneIdSeq++, name:'', shape: (oldShape==='poly'?'poly':oldShape), sign:1,
+      vals, polyPoints: oi.polyPoints||[], polyH: oi.polyH||'', volume:0
+    }];
+  } else {
+    state.zones = [];
+  }
+
+  const inp = data.inputs || {};
+  set('a-multiplier', inp.aMultiplier!==undefined ? inp.aMultiplier : 10);
+  set('a-ach', inp.aAch!==undefined ? inp.aAch : 20);
+  set('b-w', inp.bW); set('b-m', inp.bM); set('b-tlv', inp.bTlv);
+  set('b-k', inp.bK!==undefined ? inp.bK : 2);
+  set('c-q', inp.cQ); set('c-t', inp.cT);
+  set('c-c0', inp.cC0!==undefined ? inp.cC0 : 0);
+  set('c-ct', inp.cCt); set('c-callow', inp.cCallow);
+  set('c-k', inp.cK!==undefined ? inp.cK : 2);
+  const savedLanguages = Array.isArray(data.printLanguages) ? data.printLanguages : [];
+  document.querySelectorAll('input[name="print-lang"]').forEach(el=>{
+    el.checked = savedLanguages.includes(el.value);
+  });
+
+  state.fans = (data.fans || []).map(f => ({
+    id: state.fanIdSeq++,
+    name: f.name || '', rated: f.rated || 0,
+    eff: f.eff!==undefined ? f.eff : 75,
+    flowMethod: f.flowMethod || 'estimate',
+    appliedFlow: f.appliedFlow || 0,
+    ductDiameter: f.ductDiameter || 0,
+    ductLength: f.ductLength || 0,
+    bendCount: f.bendCount || 0,
+    staticPressure: f.staticPressure || 0,
+    advancedNote: f.advancedNote || '',
+    advancedOpen: false,
+    explosion: !!f.explosion, qty: f.qty || 0
+  }));
+
+  if(data.mode) selectMode(data.mode);
+  if(state.zones.length===0) addZone();
+  else renderZones();
+  renderFanTable();
+  renderTranslatedReports();
+  goStep(1);
+}
+
+function saveSessionToFile(){
+  const data = serializeSession();
+  const jsonStr = JSON.stringify(data, null, 2);
+  const nameSafe = (data.spaceName || '밀폐공간').replace(/[\\/:*?"<>|]/g,'_').trim() || '밀폐공간';
+  const dateSafe = data.savedAt.slice(0,10);
+  const filename = `세션_${nameSafe}_${dateSafe}.json`;
+  downloadOrSave(filename, jsonStr, 'application/json');
+}
+
+function loadSessionFromFile(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = evt => {
+    try{
+      const data = JSON.parse(evt.target.result);
+      restoreSession(data);
+    }catch(err){
+      alert('세션 파일을 읽을 수 없습니다. 파일이 손상되었거나 형식이 올바르지 않습니다.');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+/* ============================================================
+   초기화
+============================================================ */
+function initGuidanceAccordion(){
+  const grid = document.querySelector('.guidance-grid');
+  if(!grid) return;
+
+  const groups = Array.from(grid.querySelectorAll('details.guidance-group'));
+  groups.forEach(group=>{
+    group.addEventListener('toggle', ()=>{
+      if(group.open){
+        groups.forEach(other=>{
+          if(other !== group) other.open = false;
+        });
+      }
+      grid.classList.toggle('has-open', groups.some(item=>item.open));
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  initGuidanceAccordion();
+  renderStepper();
+  goStep(1);
+  addZone('direct');
+  addFanRow('이동식 송풍기 #1', 500, 75, false);
+});
+</script>
+</body>
+</html>
