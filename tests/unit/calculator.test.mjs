@@ -40,6 +40,7 @@ function setSelect(window, element, value) {
 test("initial screen loads without runtime errors", async () => {
   const { dom, document, errors } = await loadApp();
   assert.match(document.querySelector("h1").textContent, /밀폐공간 환기량 산정/);
+  assert.match(document.title, /v0\.6$/);
   assert.equal(document.querySelectorAll(".choice").length, 3);
   assert.equal(document.querySelectorAll("#stepper li").length, 6);
   assert.deepEqual(errors, []);

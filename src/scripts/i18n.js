@@ -290,7 +290,8 @@ function setUiLanguage(code){
   document.documentElement.dir=['ar','fa','ur'].includes(code)?'rtl':'ltr';
   const ui=document.getElementById('ui-language'); if(ui) ui.value=code;
   const set=(selector,text)=>{const el=document.querySelector(selector);if(el)el.textContent=text;};
-  set('header.app-header h1',t[0]); set('header.app-header p',t[1]);
+  set('header.app-header h1',t[0]); set('header.app-header p',appVersionText(t[1]));
+  document.title = `${t[0]} — ${APP_VERSION}`;
   set('.ui-language-label','🌐 '+t[2]); set('.warn-banner > b','⚠ '+t[3]);
   const warning=document.querySelector('.warn-banner > span'); if(warning) warning.textContent=t[4];
   const sessionLabel=document.querySelector('.session-bar .field > label');

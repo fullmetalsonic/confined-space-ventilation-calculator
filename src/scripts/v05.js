@@ -2,7 +2,7 @@
    v0.5 GLOBAL OPERATIONS EXTENSION
    Internal calculation and stored data remain SI.
 ============================================================ */
-const V05_VERSION='v0.5';
+const V05_VERSION=APP_VERSION;
 const V05_AUTOSAVE_KEY='ventcalc-v05-draft';
 const V05_COMMA_DECIMAL_LANGS=new Set(['fr','de','pt','es','it','ro','hu','pl','tr','cs','ru','uk','kk','uz']);
 const V05_PROFILE_LANGUAGES={kr:['ko'],'us-general':['en','es'],'us-construction':['en','es'],uk:['en'],au:['en'],sg:['en','zh','zht','ms'],jp:['ja'],br:['pt'],unverified:[]};

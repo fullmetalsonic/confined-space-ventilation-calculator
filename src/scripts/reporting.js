@@ -109,7 +109,7 @@ function renderReport(){
   const tailStart = Math.max(0, sections.length-2);
   body.innerHTML = sections.slice(0,tailStart).map(renderReportSection).join('\n')
     + `<div class="report-tail">${sections.slice(tailStart).map((html,i)=>renderReportSection(html,tailStart+i)).join('\n')}</div>`
-    + `<div class="print-document-footer"><span>v0.5</span><span>계산 결과는 현장 측정과 사업장 작업허가 절차를 대체하지 않습니다.</span></div>`;
+    + `<div class="print-document-footer"><span>${APP_VERSION}</span><span>계산 결과는 현장 측정과 사업장 작업허가 절차를 대체하지 않습니다.</span></div>`;
   renderTranslatedReports();
 }
 
@@ -451,7 +451,7 @@ function renderTranslatedReports(){
     const checks = t.checks.map(c=>`<div class="translated-check"><b>□ ${c[0]}</b>${c[1]}</div>`).join('');
     const translatedOk = requiredQ>0 && totalSupply>=requiredQ;
     return `<section class="translated-report" lang="${code}" data-language="${code}">
-      <div class="translated-title"><span class="translated-title-main"><small>PRE-WORK VENTILATION REVIEW</small>${t.title}</span><small><b>${PRINT_LANGUAGE_KO[code]||code} / ${t.name}</b><br>${t.subtitle}</small></div>
+      <div class="translated-title"><span class="translated-title-main"><small>PRE-WORK VENTILATION REVIEW</small>${t.title}</span><small><b>${PRINT_LANGUAGE_KO[code]||code} / ${t.name}</b><br>${appVersionText(t.subtitle)}</small></div>
       <div class="translated-disclaimer">${t.disclaimer}</div>
       <h3><span>1</span>${t.h[0]}</h3>
       <div class="translated-overview-grid">
@@ -479,7 +479,7 @@ function renderTranslatedReports(){
         <thead><tr><th style="width:16%;">${sl.role}</th><th style="width:28%;">${sl.name}</th><th style="width:28%;">${sl.sign}</th><th style="width:28%;">${sl.date}</th></tr></thead>
         <tbody><tr><td>${t.l.prepared}</td><td></td><td></td><td></td></tr><tr><td>${t.l.reviewed}</td><td></td><td></td><td></td></tr></tbody>
       </table>
-      <div class="translated-document-footer"><span>v0.5</span><span>${t.subtitle}</span></div>
+      <div class="translated-document-footer"><span>${APP_VERSION}</span><span>${appVersionText(t.subtitle)}</span></div>
     </section>`;
   }).join('');
 }

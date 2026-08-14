@@ -8,3 +8,5 @@ const state = {
   fanIdSeq: 1,
   result: null      // {initial, sustained, requiredQ, notes...}
 };
+const APP_VERSION = 'v0.6';
+function appVersionText(value){ return String(value ?? '').replace(/v0\.5/g, APP_VERSION); }

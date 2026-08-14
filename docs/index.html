@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>밀폐공간 환기량 산정 · 송배풍기 매칭 도구 — v0.5</title>
+<title>밀폐공간 환기량 산정 · 송배풍기 매칭 도구 — v0.6</title>
 <style>
 :root{
     /* POSCO 공식 CI 색상을 중심으로, 화면은 더 맑고 밝게 보이도록 구성 */
@@ -2168,7 +2168,7 @@ html{scroll-padding-top:12px;}
 
 <header class="app-header">
   <h1>밀폐공간 환기량 산정 · 송배풍기 매칭 도구</h1>
-  <p>작업 전 최초 급기량 / 작업 중 유지환기량 산정 및 보유 장비 매칭 — v0.5</p>
+  <p>작업 전 최초 급기량 / 작업 중 유지환기량 산정 및 보유 장비 매칭 — v0.6</p>
   <div class="header-tools no-print">
     <label class="ui-language-control">
       <span class="ui-language-label">🌐 화면 언어</span>
@@ -2643,6 +2643,8 @@ const state = {
   fanIdSeq: 1,
   result: null      // {initial, sustained, requiredQ, notes...}
 };
+const APP_VERSION = 'v0.6';
+function appVersionText(value){ return String(value ?? '').replace(/v0\.5/g, APP_VERSION); }
 </script>
   <script>
 const UI_LANGUAGE_META = [
@@ -2937,7 +2939,8 @@ function setUiLanguage(code){
   document.documentElement.dir=['ar','fa','ur'].includes(code)?'rtl':'ltr';
   const ui=document.getElementById('ui-language'); if(ui) ui.value=code;
   const set=(selector,text)=>{const el=document.querySelector(selector);if(el)el.textContent=text;};
-  set('header.app-header h1',t[0]); set('header.app-header p',t[1]);
+  set('header.app-header h1',t[0]); set('header.app-header p',appVersionText(t[1]));
+  document.title = `${t[0]} — ${APP_VERSION}`;
   set('.ui-language-label','🌐 '+t[2]); set('.warn-banner > b','⚠ '+t[3]);
   const warning=document.querySelector('.warn-banner > span'); if(warning) warning.textContent=t[4];
   const sessionLabel=document.querySelector('.session-bar .field > label');
@@ -3865,7 +3868,7 @@ function renderReport(){
   const tailStart = Math.max(0, sections.length-2);
   body.innerHTML = sections.slice(0,tailStart).map(renderReportSection).join('\n')
     + `<div class="report-tail">${sections.slice(tailStart).map((html,i)=>renderReportSection(html,tailStart+i)).join('\n')}</div>`
-    + `<div class="print-document-footer"><span>v0.5</span><span>계산 결과는 현장 측정과 사업장 작업허가 절차를 대체하지 않습니다.</span></div>`;
+    + `<div class="print-document-footer"><span>${APP_VERSION}</span><span>계산 결과는 현장 측정과 사업장 작업허가 절차를 대체하지 않습니다.</span></div>`;
   renderTranslatedReports();
 }
 
@@ -4207,7 +4210,7 @@ function renderTranslatedReports(){
     const checks = t.checks.map(c=>`<div class="translated-check"><b>□ ${c[0]}</b>${c[1]}</div>`).join('');
     const translatedOk = requiredQ>0 && totalSupply>=requiredQ;
     return `<section class="translated-report" lang="${code}" data-language="${code}">
-      <div class="translated-title"><span class="translated-title-main"><small>PRE-WORK VENTILATION REVIEW</small>${t.title}</span><small><b>${PRINT_LANGUAGE_KO[code]||code} / ${t.name}</b><br>${t.subtitle}</small></div>
+      <div class="translated-title"><span class="translated-title-main"><small>PRE-WORK VENTILATION REVIEW</small>${t.title}</span><small><b>${PRINT_LANGUAGE_KO[code]||code} / ${t.name}</b><br>${appVersionText(t.subtitle)}</small></div>
       <div class="translated-disclaimer">${t.disclaimer}</div>
       <h3><span>1</span>${t.h[0]}</h3>
       <div class="translated-overview-grid">
@@ -4235,7 +4238,7 @@ function renderTranslatedReports(){
         <thead><tr><th style="width:16%;">${sl.role}</th><th style="width:28%;">${sl.name}</th><th style="width:28%;">${sl.sign}</th><th style="width:28%;">${sl.date}</th></tr></thead>
         <tbody><tr><td>${t.l.prepared}</td><td></td><td></td><td></td></tr><tr><td>${t.l.reviewed}</td><td></td><td></td><td></td></tr></tbody>
       </table>
-      <div class="translated-document-footer"><span>v0.5</span><span>${t.subtitle}</span></div>
+      <div class="translated-document-footer"><span>${APP_VERSION}</span><span>${appVersionText(t.subtitle)}</span></div>
     </section>`;
   }).join('');
 }
@@ -5296,7 +5299,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
    v0.5 GLOBAL OPERATIONS EXTENSION
    Internal calculation and stored data remain SI.
 ============================================================ */
-const V05_VERSION='v0.5';
+const V05_VERSION=APP_VERSION;
 const V05_AUTOSAVE_KEY='ventcalc-v05-draft';
 const V05_COMMA_DECIMAL_LANGS=new Set(['fr','de','pt','es','it','ro','hu','pl','tr','cs','ru','uk','kk','uz']);
 const V05_PROFILE_LANGUAGES={kr:['ko'],'us-general':['en','es'],'us-construction':['en','es'],uk:['en'],au:['en'],sg:['en','zh','zht','ms'],jp:['ja'],br:['pt'],unverified:[]};
