@@ -1,0 +1,12 @@
+{
+  "name": "confined-space-ventilation-calculator",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:unit": "node --test tests/unit/**/*.test.mjs",
+    "test": "npm run test:unit"
+  },
+  "devDependencies": {
+    "jsdom": "^30.0.1"
+  }
+}

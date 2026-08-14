@@ -8,6 +8,7 @@ dist/VentCalc.exe
 dist/windows/*.exe
 *.spec
 .qa_docx/
+node_modules/
 
 # Local work products and agent attachment cache
 .codex-remote-attachments/
