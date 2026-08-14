@@ -177,3 +177,90 @@ test("saved sessions restore validated profile, volume, and equipment data", asy
   assert.deepEqual(errors, []);
   dom.window.close();
 });
+
+test("US physical inputs convert to SI storage without changing the calculated volume", async () => {
+  const { dom, document, window, errors } = await loadApp();
+  window.selectMode("A");
+  window.setV05InputUnits("us");
+  window.updateZoneField(1, "v", 3531.4667); // 100 m³ in ft³
+  assert.ok(Math.abs(window.serializeSession().zones[0].vals.v - 100) < 0.01);
+  assert.match(document.querySelector("#volume-result").textContent, /ft³/);
+  window.computeAndRenderStep4();
+  assert.ok(Math.abs(window.getRequiredQ() - 2000) < 0.001);
+  assert.deepEqual(errors, []);
+  dom.window.close();
+});
+
+test("draft autosave, restore, and delete preserve only device-local session data", async () => {
+  const { dom, document, window, errors } = await loadApp();
+  window.selectMode("A");
+  setValue(window, document.querySelector('input[type="number"]'), 100);
+  setValue(window, document.querySelector("#space-name"), "임시저장 검수");
+  window.saveV05Draft();
+  const raw = window.localStorage.getItem("ventcalc-v05-draft");
+  assert.ok(raw);
+  assert.equal(JSON.parse(raw).spaceName, "임시저장 검수");
+  setValue(window, document.querySelector("#space-name"), "변경됨");
+  window.restoreV05Draft();
+  assert.equal(window.serializeSession().spaceName, "임시저장 검수");
+  window.clearV05Draft();
+  assert.equal(window.localStorage.getItem("ventcalc-v05-draft"), null);
+  assert.deepEqual(errors, []);
+  dom.window.close();
+});
+
+test("profile recommendations and date format apply their visible document settings", async () => {
+  const { dom, document, window, errors } = await loadApp();
+  window.setJurisdictionProfile("us-general");
+  window.applyV05RegionalRecommendation();
+  assert.equal(document.querySelector("#paper-size").value, "Letter");
+  assert.equal(document.querySelector("#unit-system").value, "us");
+  assert.equal(document.querySelector("#input-unit-system").value, "us");
+  window.setV05DateFormat("mdy");
+  assert.match(document.querySelector("#date-format-note").textContent, /\d{2}\/\d{2}\/\d{4}$/);
+  assert.deepEqual(errors, []);
+  dom.window.close();
+});
+
+test("translated report output and measurement reliability warnings render without errors", async () => {
+  const { dom, document, window, errors } = await loadApp();
+  window.selectMode("C");
+  setValue(window, document.querySelector('input[type="number"]'), 100);
+  setValue(window, document.querySelector("#c-q"), 1000);
+  setValue(window, document.querySelector("#c-t"), 1);
+  setValue(window, document.querySelector("#c-c0"), 100);
+  setValue(window, document.querySelector("#c-ct"), 80);
+  setValue(window, document.querySelector("#c-callow"), 10);
+  setValue(window, document.querySelector("#c-k"), 2);
+  window.computeAndRenderStep4();
+  assert.match(document.querySelector("#result-notes").textContent, /신뢰도 낮음/);
+  const printLanguage = document.querySelector('#print-language-grid input[value="en"]');
+  printLanguage.checked = true;
+  printLanguage.dispatchEvent(new window.Event("change", { bubbles: true }));
+  assert.ok(document.querySelectorAll(".translated-report").length >= 1);
+  assert.deepEqual(errors, []);
+  dom.window.close();
+});
+
+test("invalid session payload is rejected, and hostile text is safely escaped", async () => {
+  const { dom, document, window, errors } = await loadApp();
+  const rejected = window.sanitizeV04Session({
+    fileFormat: "confined-space-session", version: 5, mode: "Z",
+    spaceName: "<img src=x onerror=alert(1)>", zones: "not-an-array", fans: [{}],
+    jurisdictionProfile: "unknown", paperSize: "A0", uiLanguage: "unknown",
+  });
+  assert.equal(rejected, null);
+  const restored = window.sanitizeV04Session({
+    fileFormat: "confined-space-session", version: 5, mode: "Z",
+    spaceName: "<img src=x onerror=alert(1)>", zones: [], fans: [{}],
+    jurisdictionProfile: "unknown", paperSize: "A0", uiLanguage: "unknown",
+  });
+  assert.equal(restored.mode, "A");
+  assert.equal(restored.jurisdictionProfile, "kr");
+  assert.equal(restored.paperSize, "A4");
+  window.restoreSession(restored);
+  window.renderReport();
+  assert.equal(document.querySelectorAll("#report-body img").length, 0);
+  assert.deepEqual(errors, []);
+  dom.window.close();
+});

@@ -4611,6 +4611,8 @@ function formatV04Date(date=new Date()){
 }
 function setPrintPaper(value){
   v04Paper=value==='Letter'?'Letter':'A4';
+  const select=document.getElementById('paper-size');
+  if(select)select.value=v04Paper;
   let style=document.getElementById('v04-paper-rule');
   if(!style){style=document.createElement('style');style.id='v04-paper-rule';document.head.appendChild(style);}
   const pageSize=v04Paper==='Letter'?'8.5in 11in':'210mm 297mm';
@@ -4965,6 +4967,11 @@ function sanitizeV04Session(data){
   if(data.fans!==undefined&&!Array.isArray(data.fans))return null;
   if((data.zones||[]).length>100||(data.fans||[]).length>100)return null;
   const copy=JSON.parse(JSON.stringify(data));
+  copy.mode=['A','B','C'].includes(copy.mode)?copy.mode:'A';
+  copy.jurisdictionProfile=V04_PROFILES[copy.jurisdictionProfile]?copy.jurisdictionProfile:'kr';
+  copy.paperSize=copy.paperSize==='Letter'?'Letter':'A4';
+  copy.uiLanguage=UI_LANGUAGE_META.some(item=>item[0]===copy.uiLanguage)?copy.uiLanguage:'ko';
+  copy.profileReference=cleanV04Text(copy.profileReference,160);
   copy.spaceName=cleanV04Text(copy.spaceName,160);
   copy.zones=(copy.zones||[]).map(z=>({
     name:cleanV04Text(z.name,160),
