@@ -264,3 +264,68 @@ test("invalid session payload is rejected, and hostile text is safely escaped", 
   assert.deepEqual(errors, []);
   dom.window.close();
 });
+
+test("file saving and printing select the correct browser, desktop, and Android adapters", async () => {
+  const { dom, document, window, errors } = await loadApp();
+  const calls = [];
+  window.AndroidBridge = {
+    print: () => calls.push("android-print"),
+    saveFile: (filename, content) => calls.push([filename, content]),
+  };
+  window.printReport();
+  window.downloadOrSave("android.json", "{}", "application/json");
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.ok(calls.includes("android-print"));
+  assert.ok(calls.some((call) => JSON.stringify(call) === JSON.stringify(["android.json", "{}"])));
+  delete window.AndroidBridge;
+  const desktopSaves = [];
+  window.pywebview = { api: { save_file: (filename, content) => {
+    desktopSaves.push([filename, content]);
+    return Promise.resolve(true);
+  } } };
+  window.downloadOrSave("desktop.json", "{\"desktop\":true}", "application/json");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.deepEqual(desktopSaves, [["desktop.json", "{\"desktop\":true}"]]);
+  delete window.pywebview;
+  let printCount = 0;
+  window.print = () => { printCount += 1; };
+  window.printReport();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.equal(printCount, 1);
+  const downloads = [];
+  window.URL.createObjectURL = () => "blob:test";
+  window.URL.revokeObjectURL = (url) => downloads.push(["revoke", url]);
+  window.HTMLAnchorElement.prototype.click = function click() {
+    downloads.push([this.download, this.href]);
+  };
+  window.downloadOrSave("browser.json", "{\"ok\":true}", "application/json");
+  assert.deepEqual(downloads, [["browser.json", "blob:test"], ["revoke", "blob:test"]]);
+  window.selectMode("A");
+  setValue(window, document.querySelector('input[type="number"]'), 10);
+  window.saveSessionToFile();
+  assert.match(downloads.at(-2)[0], /^세션_밀폐공간_\d{4}-\d{2}-\d{2}\.json$/);
+  assert.deepEqual(errors, []);
+  dom.window.close();
+});
+
+test("fan export and validated import update the equipment table", async () => {
+  const { dom, document, window, errors } = await loadApp();
+  const saved = [];
+  window.downloadOrSave = (filename, content, mime) => saved.push({ filename, content, mime });
+  window.updateFan(1, "name", "검수 팬");
+  window.updateFan(1, "rated", 1200);
+  window.exportFans();
+  assert.equal(saved[0].filename, "송배풍기_목록.json");
+  assert.match(saved[0].content, /검수 팬/);
+  const imported = [{ name: "불러온 팬", rated: 800, eff: 80, qty: 2, flowMethod: "measured", appliedFlow: 700 }];
+  class FakeReader {
+    readAsText() { this.onload({ target: { result: JSON.stringify(imported) } }); }
+  }
+  window.FileReader = FakeReader;
+  window.importFans({ target: { files: [{}] } });
+  assert.equal(window.serializeSession().fans[0].name, "불러온 팬");
+  assert.equal(window.serializeSession().fans[0].appliedFlow, 700);
+  assert.equal(document.querySelector('#fan-tbody input[type="text"]').value, "불러온 팬");
+  assert.deepEqual(errors, []);
+  dom.window.close();
+});
