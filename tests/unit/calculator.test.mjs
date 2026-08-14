@@ -158,3 +158,22 @@ test("blower matching, report rendering, and invalid-input blocking work", async
   assert.deepEqual(errors, []);
   dom.window.close();
 });
+
+test("saved sessions restore validated profile, volume, and equipment data", async () => {
+  const { dom, document, window, errors } = await loadApp();
+  const saved = {
+    fileFormat: "confined-space-session", version: 4, mode: "A", spaceName: "복원 검수",
+    zones: [{ name: "본체", shape: "box", sign: 1, vals: { l: 2, w: 3, h: 4 }, polyPoints: [], polyH: 0 }],
+    fans: [{ name: "실측 송풍기", rated: 500, eff: 75, flowMethod: "measured", appliedFlow: 800, ductDiameter: 300, ductLength: 5, bendCount: 1, staticPressure: 100, advancedNote: "test", explosion: true, qty: 2 }],
+    jurisdictionProfile: "us-general", paperSize: "Letter", uiLanguage: "en", unitSystem: "us", printLanguages: ["ko"],
+  };
+  window.restoreSession(saved);
+  const restored = window.serializeSession();
+  assert.equal(restored.spaceName, "복원 검수");
+  assert.deepEqual(restored.zones[0].vals, { l: 2, w: 3, h: 4 });
+  assert.equal(restored.fans[0].flowMethod, "measured");
+  assert.equal(document.querySelector("#jurisdiction-profile").value, "us-general");
+  assert.equal(document.querySelector("#paper-size").value, "Letter");
+  assert.deepEqual(errors, []);
+  dom.window.close();
+});
