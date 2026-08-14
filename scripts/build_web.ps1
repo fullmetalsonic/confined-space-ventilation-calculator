@@ -34,5 +34,7 @@ foreach ($name in $names) {
 $target = [System.IO.Path]::GetFullPath($OutputPath)
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
 [System.IO.File]::WriteAllText($target, $html.Replace("`r`n", "`n"), $utf8)
+$pagesTarget = Join-Path $root 'docs\index.html'
+[System.IO.File]::WriteAllText($pagesTarget, $html.Replace("`r`n", "`n"), $utf8)
 $bytes = [System.IO.FileInfo]::new($target).Length
-Write-Output "HTML 배포본 생성: $target ($bytes bytes)"
+Write-Output "HTML 배포본 생성: $target ($bytes bytes); Pages 공개본 동기화: $pagesTarget"
