@@ -10,7 +10,7 @@ import textwrap
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_HTML_PATH = ROOT / "밀폐공간_환기량_산정_도구.html"
+DEFAULT_HTML_PATH = ROOT / "dist" / "html" / "밀폐공간_환기량_산정_도구_v0.6.html"
 DEFAULT_APP_PATH = ROOT / "app.py"
 
 BLOCK_PATTERN = re.compile(

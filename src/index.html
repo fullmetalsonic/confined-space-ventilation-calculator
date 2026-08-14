@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>밀폐공간 환기량 산정 · 송배풍기 매칭 도구 — v0.5</title>
+<link rel="stylesheet" href="styles/app.css">
+
+
+
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<header class="app-header">
+  <h1>밀폐공간 환기량 산정 · 송배풍기 매칭 도구</h1>
+  <p>작업 전 최초 급기량 / 작업 중 유지환기량 산정 및 보유 장비 매칭 — v0.5</p>
+  <div class="header-tools no-print">
+    <label class="ui-language-control">
+      <span class="ui-language-label">🌐 화면 언어</span>
+      <select id="ui-language" onchange="setUiLanguage(this.value)" aria-label="화면 언어 선택"></select>
+    </label>
+    <span class="credit">Produced by H.S.H</span>
+  </div>
+</header>
+<div class="warn-banner">
+  <b>⚠ 안전 고지</b>
+  <span>본 도구의 산출값은 <b>설계·계획 참고용</b>입니다. 계산값만으로 출입을 허가하지 마십시오. 작업 시작·재개 전에는 지정된 측정자가 산소·유해가스 농도를 측정·평가하고, 작업 중에도 적정공기 상태를 확인해야 합니다. <b>측정결과가 부적정하면 진입 금지·환기·보호구 등 후속조치가 우선</b>입니다.</span>
+</div>
+<details class="ref-panel">
+  <summary>📋 작업허가자·안전관리자 필수 확인사항과 법적 기준 — 클릭하여 펼치기</summary>
+  <div class="ref-panel-body">
+    <table class="wide">
+      <thead><tr><th>항목</th><th>허용·관리 기준</th><th>근거 성격</th></tr></thead>
+      <tbody>
+        <tr><td>산소농도</td><td>18% 이상 23.5% 미만 (18% 미만 = 산소결핍)</td><td>법정(제618조)</td></tr>
+        <tr><td>이산화탄소(CO₂)</td><td>1.5% 미만</td><td>법정(제618조)</td></tr>
+        <tr><td>일산화탄소(CO)</td><td>30ppm 미만</td><td>법정(제618조)</td></tr>
+        <tr><td>황화수소(H₂S)</td><td>10ppm 미만</td><td>법정(제618조)</td></tr>
+        <tr><td>가연성가스</td><td>폭발하한계(LEL)의 10% 미만</td><td>KOSHA·작업허가 관리기준</td></tr>
+        <tr><td>그 밖의 유해물질</td><td>MSDS·노출기준·사업장 기준에 따라 물질별 측정</td><td>작업·공정별 추가 확인</td></tr>
+      </tbody>
+    </table>
+    <p class="hint"><b>센서 구성을 반드시 확인하십시오.</b> 휴대용 측정기 한 대가 위 모든 항목을 측정한다고 가정하면 안 됩니다. 작업 중 발생·유입 가능한 물질을 먼저 파악하고, 해당 센서 또는 별도 측정기를 준비해야 합니다. LEL 10% 미만은 제618조의 법정 적정공기 4항목과 구분되는 화재·폭발 예방 관리기준입니다.</p>
+
+    <div class="guidance-grid">
+      <details class="guidance-group">
+        <summary>① 작업허가 전 확인·게시 <span class="legal-tag">제619조</span></summary>
+        <div class="guidance-body">
+          <ul>
+            <li>작업 일시·기간·장소·내용과 밀폐공간의 위치·특이사항</li>
+            <li>관리감독자·작업자·외부 감시인의 지정 및 역할</li>
+            <li>산소·유해가스 측정결과와 기준 초과 시 후속조치</li>
+            <li>불활성가스·유해가스의 누출·유입·발생 가능성과 차단조치</li>
+            <li>착용할 보호구, 비상연락체계, 구조방법</li>
+            <li>확인 내용을 작업 종료 시까지 출입구에 게시</li>
+          </ul>
+          <p class="source-note">허가서 서명만으로 끝나는 절차가 아니라, 현장 상태와 후속조치를 확인한 뒤 출입을 승인하는 절차입니다.</p>
+        </div>
+      </details>
+
+      <details class="guidance-group">
+        <summary>② 농도 측정·평가·보존 <span class="legal-tag">제619조의2</span></summary>
+        <div class="guidance-body">
+          <ul>
+            <li>작업 시작 전과 일시 중단 후 재개 전에 다시 측정·평가</li>
+            <li>측정·평가 지식과 실무경험이 있는 사람을 지정하고 측정장비 지급</li>
+            <li>상부·중부·하부, 작업 위치와 사각지대 등 대표 지점을 측정</li>
+            <li>측정자, 일시, 장소, 결과와 평가 내용을 기록하여 3년간 보존</li>
+            <li>부적정 시 진입 금지 후 환기·보호구 등 필요한 조치 및 재측정</li>
+          </ul>
+          <p class="source-note">측정기는 사용 전 교정·범프테스트 상태, 배터리, 센서 유효기간과 대상가스 감지 가능 여부를 확인합니다.</p>
+        </div>
+      </details>
+
+      <details class="guidance-group">
+        <summary>③ 격리·환기·작업 중 관리 <span class="legal-tag">제620~623조</span></summary>
+        <div class="guidance-body">
+          <ul>
+            <li>연결 배관의 유체·가스 유입 차단, 밸브 잠금·표지, 동력원 LOTO</li>
+            <li>작업 전 체적 10배 이상 급기 후 적정공기 확인, 작업 중 20회/h 이상 계속 환기</li>
+            <li>급·배기구를 떨어뜨려 단락류를 방지하고 작업자 호흡영역까지 신선한 공기 공급</li>
+            <li>환기팬·덕트의 용량, 정압, 손상·꺾임, 전원 상태와 방폭 적합성 확인</li>
+            <li>입·퇴장 인원 점검, 관계자 외 출입금지 표지, 외부 감시인과 상시 연락</li>
+            <li>제626조 상시환기 특례는 24시간 가동·월 1회 이상 점검·출입구 상시 게시 등 요건 충족 여부를 별도로 확인</li>
+          </ul>
+          <p class="source-note">10배·20회/h는 KOSHA GUIDE H-80-2021의 권장 최소기준이며, 법 제620조는 적정공기 상태가 유지되도록 작업 전·중 환기할 의무를 규정합니다.</p>
+        </div>
+      </details>
+
+      <details class="guidance-group">
+        <summary>④ 보호구·구조·작업중지 <span class="legal-tag">제624·625·639·640조</span></summary>
+        <div class="guidance-body">
+          <ul>
+            <li>추락 위험 시 안전대·구명줄과 안전한 부착설비 준비</li>
+            <li>공기호흡기·송기마스크, 사다리, 섬유로프, 삼각대 등 대피·구조장비 비치</li>
+            <li>질식·화재·폭발 우려 또는 경보 발생 시 즉시 작업중지·대피</li>
+            <li>보호구 없이 쓰러진 작업자를 따라 들어가는 구조행위 금지</li>
+            <li>비상연락·구조장비·호흡보호구·응급처치 훈련을 6개월마다 실시·기록</li>
+            <li>화기작업 병행 시 별도 허가, 가연물 제거, LEL 연속 확인과 화재감시</li>
+          </ul>
+          <p class="source-note">환기만으로 적정공기를 유지할 수 없거나 환기가 곤란한 경우에는 작업조건에 맞는 호흡용 보호구와 별도 통제가 필요합니다.</p>
+        </div>
+      </details>
+    </div>
+
+    <p class="hint"><b>기준 구분:</b> 제618조의 농도는 법정 적정공기 기준, 제619~625조 등은 법적 작업관리 의무, 체적 10배·20회/h와 LEL 10% 미만은 KOSHA·작업허가 관리기준, TLV·안전계수(K)는 MSDS와 사업장 위험성평가에 따라 정하는 값입니다. 기본값을 낮추는 경우에는 근거와 승인 절차를 별도로 확인하십시오.</p>
+    <p class="hint"><b>확인 기준:</b> 「산업안전보건기준에 관한 규칙」 2026.3.2 시행본과 KOSHA GUIDE H-80-2021을 기준으로 정리했습니다. 법령·기술지침·사업장 절차가 개정되면 최신 원문을 우선 적용하십시오.</p>
+  </div>
+</details>
+
+<div class="shell" id="main-content" tabindex="-1">
+
+  <section class="global-profile no-print" aria-labelledby="global-profile-title">
+    <div class="field">
+      <label id="global-profile-title" for="jurisdiction-profile">🌍 <span id="profile-label">안전 기준 프로필</span></label>
+      <select id="jurisdiction-profile" onchange="setJurisdictionProfile(this.value)" aria-describedby="profile-note">
+        <option value="kr">대한민국 · KOSHA H-80-2021</option>
+        <option value="us-general">United States · OSHA 29 CFR 1910.146</option>
+        <option value="us-construction">United States · OSHA 29 CFR 1926 Subpart AA</option>
+        <option value="uk">United Kingdom · Confined Spaces Regulations 1997 / HSE L101</option>
+        <option value="au">Australia · WHS Regulations / Model Code of Practice</option>
+        <option value="sg">Singapore · WSH (Confined Spaces) Regulations 2009</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="profile-reference"><span id="profile-reference-label">추가 회사 기준 문서·개정번호</span> <span class="opt">(선택)</span></label>
+      <input id="profile-reference" type="text" maxlength="160" dir="auto" placeholder="예: HSE-CS-01 Rev.4">
+    </div>
+    <div class="field">
+      <label for="paper-size"><span id="paper-label">인쇄 용지</span></label>
+      <select id="paper-size" onchange="setPrintPaper(this.value)">
+        <option value="A4">A4</option>
+        <option value="Letter">US Letter</option>
+      </select>
+      <small class="hint" id="paper-support-note"></small>
+    </div>
+    <div class="field">
+      <label for="unit-system"><span id="unit-label">표시 단위</span></label>
+      <select id="unit-system" onchange="setV04UnitSystem(this.value,false)">
+        <option value="si">SI · m³ / m³/h</option>
+        <option value="us">US · ft³ / CFM + SI</option>
+      </select>
+      <small class="unit-mode-note" id="unit-support-note"></small>
+    </div>
+    <p class="profile-note" id="profile-note" role="status"></p>
+    <div class="profile-source" id="profile-source"></div>
+  </section>
+
+  <div class="session-bar no-print">
+    <div class="field" style="max-width:320px;margin:0;">
+      <label style="margin-bottom:3px;">공간명 <span class="opt">(세션 저장 파일명에 사용, 선택)</span></label>
+      <input type="text" id="space-name" placeholder="예: 1호기 정화조 맨홀">
+    </div>
+    <div class="session-actions">
+      <button class="btn secondary" onclick="saveSessionToFile()"><svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> 이 공간 저장</button>
+      <label class="btn ghost" style="cursor:pointer;">
+        <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> 저장된 공간 불러오기
+        <input type="file" accept=".json" onchange="loadSessionFromFile(event)" style="display:none;">
+      </label>
+    </div>
+  </div>
+
+  <div class="validation-summary no-print" id="validation-summary" role="alert" aria-live="assertive"></div>
+
+  <ul class="stepper" id="stepper" aria-label="Workflow steps"></ul>
+
+  <!-- ===================== STEP 1 ===================== -->
+  <div class="step" data-step="1">
+    <div class="card">
+      <h2>1단계 · 계산방식 선택</h2>
+      <p class="sub">밀폐공간의 특성에 맞는 환기량 산정 방식을 선택하십시오.</p>
+
+      <div class="choice-row">
+        <div class="choice" data-mode="A" role="radio" aria-checked="false" tabindex="0" onclick="selectMode('A')">
+          <span class="tag">체적배수법</span>
+          <h3>일반 밀폐공간</h3>
+          <p>지속적 오염물질 발생원이 특정되지 않는 경우 (단순 산소결핍 우려). 체적 대비 배수 기준으로 산정합니다.</p>
+        </div>
+        <div class="choice" data-mode="B" role="radio" aria-checked="false" tabindex="0" onclick="selectMode('B')">
+          <span class="tag">희석법 · 발생량 입력</span>
+          <h3>발생량을 아는 경우</h3>
+          <p>유해가스·유기화합물이 지속 발생하며, 시간당 사용량(발생량)을 파악할 수 있는 경우입니다.</p>
+        </div>
+        <div class="choice" data-mode="C" role="radio" aria-checked="false" tabindex="0" onclick="selectMode('C')">
+          <span class="tag">희석법 · 측정 역산</span>
+          <h3>발생량을 모르는 경우</h3>
+          <p>발생량을 특정할 수 없어, 송풍 후 일정시간 경과 시 농도를 측정하여 발생량을 역산합니다.</p>
+        </div>
+      </div>
+
+      <div class="note" style="margin-top:16px;">
+        어떤 방식을 선택해야 할지 확실하지 않다면, 우선 체적배수법으로 산정하고 실제 작업환경측정 결과에 따라 방식을 조정하는 것을 권장합니다.
+      </div>
+    </div>
+    <div class="nav-row"><span></span><button class="btn" onclick="goStep(2)">다음 : 체적 산출 →</button></div>
+  </div>
+
+  <!-- ===================== STEP 2 ===================== -->
+  <div class="step" data-step="2">
+    <div class="card">
+      <h2>2단계 · 공간 체적 산출</h2>
+      <p class="sub">구역을 추가하면서 체적을 합산합니다. 5단계의 송배풍기 목록에 장비를 추가하는 것과 동일한 방식입니다.</p>
+
+      <div id="zones-list"></div>
+
+      <div style="display:flex;gap:8px;margin:10px 0 20px;flex-wrap:wrap;">
+        <button class="btn secondary" onclick="addZone()">+ 구역 추가</button>
+      </div>
+
+      <div class="field" style="max-width:380px;">
+        <label>유효공간율(%) <span class="opt">보정계수, 기본 100%</span>
+          <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+        </label>
+        <div class="info-box" hidden>
+          배관·구조물 등 내부 설비가 부피를 차지해 실제 공기가 채워지는 체적이 계산값보다 작은 경우에만 낮추십시오. 실측이나 도면 근거 없이 "복잡해 보인다"는 이유만으로 낮추면 필요환기량이 과소산정되어 위험할 수 있습니다. <b>확실하지 않으면 100%를 유지하십시오.</b>
+        </div>
+        <input type="number" id="space-ratio" value="100" min="1" max="100" step="1" onchange="renderZones()">
+      </div>
+
+      <div class="metric" style="margin-top:14px;max-width:340px;">
+        <div class="label">산출된 실내 체적 (V) — 유효공간율 반영</div>
+        <div class="value" id="volume-result">0.00 <span class="unit">㎥</span></div>
+      </div>
+    </div>
+    <div class="nav-row">
+      <button class="btn secondary" onclick="goStep(1)">← 이전</button>
+      <button class="btn" onclick="goStep(3)">다음 : 작업조건 입력 →</button>
+    </div>
+  </div>
+
+  <!-- ===================== STEP 3 ===================== -->
+  <div class="step" data-step="3">
+    <div class="card">
+      <h2>3단계 · 작업조건 입력</h2>
+      <p class="sub" id="step3-sub">-</p>
+
+      <div class="field" style="max-width:320px;">
+        <label>작업 인원수</label>
+        <input type="number" id="worker-count" min="0" step="1" placeholder="예: 3">
+        <div class="hint">※ 기록용 항목입니다. 아래 환기량 계산식에는 반영되지 않습니다.</div>
+      </div>
+
+      <!-- Mode A : 체적배수법 -->
+      <div id="mode-A-fields" class="mode-fields" style="display:none;">
+        <div class="grid cols-2">
+          <div class="field">
+            <label>최초 급기 배수 (체적의 몇 배) <span class="opt">최소 기준</span></label>
+            <input type="number" id="a-multiplier" value="10" min="0" step="0.5">
+            <div class="hint">기본값 <b>10배 이상</b> — KOSHA GUIDE H-80-2021(2021.12 개정) 9.1(1)항의 <b>최소 기준</b>입니다("10배 <u>이상</u>"). 2021년 개정 시 환기실험·CFD 결과를 반영해 5배→10배로 상향되었습니다. 법 조문(안전보건규칙 제620조)은 적정공기가 유지되도록 작업 전·중 환기할 의무를 규정하지만 구체적 배수는 정하지 않으며, 10배는 공단 기술지침의 권장 최소치입니다. <b>이 값보다 낮추면 가이드 기준 미달</b>이며, 사업장 판단으로 상향하는 것은 무방합니다.</div>
+          </div>
+          <div class="field">
+            <label>유지 환기횟수 (회/h) <span class="opt">최소 기준</span></label>
+            <input type="number" id="a-ach" value="20" min="0" step="1">
+            <div class="hint">기본값 <b>20회/h 이상</b> — 같은 KOSHA GUIDE H-80-2021 9.1(1)항의 <b>최소 기준</b>입니다("20회 <u>이상</u>"). 팬을 <b>끄지 않고 연속 가동</b>했을 때의 목표 유량이며, 온·오프를 반복하는 횟수가 아닙니다. <b>이 값보다 낮추면 기준 미달</b>이며, 사업장 판단으로 상향하는 것은 무방합니다.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mode B : 희석법(발생량 입력) -->
+      <div id="mode-B-fields" class="mode-fields" style="display:none;">
+        <div class="grid cols-2">
+          <div class="field">
+            <label>물질 시간당 사용(발생)량 W <span class="opt">g/h</span>
+              <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+            </label>
+            <div class="info-box" hidden>1시간 동안 실제로 사용(소비)하는 유해물질의 무게입니다. (예: 도장 작업에서 신너를 1시간에 200g 사용한다면 200 입력)</div>
+            <input type="number" id="b-w" min="0" step="0.01">
+          </div>
+          <div class="field">
+            <label>물질 분자량 M <span class="opt">g/mol</span>
+              <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+            </label>
+            <div class="info-box" hidden>물질안전보건자료(MSDS)의 "물리화학적 특성" 항목에서 확인할 수 있습니다. (예: 톨루엔 92.14, 아세톤 58.08, 자일렌 106.16)</div>
+            <input type="number" id="b-m" min="0" step="0.01">
+          </div>
+          <div class="field">
+            <label>목표(허용) 농도 기준 <span class="opt">TLV, ppm</span>
+              <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+            </label>
+            <div class="info-box" hidden>MSDS "노출기준" 항목 또는 고용노동부 고시 화학물질 노출기준에서 확인할 수 있습니다.</div>
+            <input type="number" id="b-tlv" min="0" step="0.01">
+          </div>
+          <div class="field">
+            <label>안전계수 K</label>
+            <input type="number" id="b-k" value="2" min="1" step="0.1">
+            <div class="hint">여유율. 확산 불균일 등을 고려해 통상 1.5~3 적용</div>
+          </div>
+        </div>
+        <div class="note">
+          계산은 이상기체 몰부피(25℃, 1기압 기준 24.45 L/mol)를 이용해 사용량을 오염물질 발생 체적유량으로 환산한 뒤, 목표(허용) 농도 이하로 희석하는 데 필요한 공기량을 구하는 일반 희석환기 원리를 사용합니다. 법정 설비 인허가·성능 확인 목적이라면 「산업안전보건기준에 관한 규칙」 제430조 원문 계산식과 반드시 대조하십시오.
+        </div>
+      </div>
+
+      <!-- Mode C : 희석법(측정 역산) -->
+      <div id="mode-C-fields" class="mode-fields" style="display:none;">
+        <div class="note">이 측정은 반드시 근로자 진입 없이, 원격 프로브 또는 연장 호스가 달린 가스측정기로 수행하십시오.</div>
+        <div class="grid cols-3">
+          <div class="field">
+            <label>현재 가동 송풍량 Q <span class="opt">㎥/h</span>
+              <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+            </label>
+            <div class="info-box" hidden>지금 실제로 돌리고 있는 송풍기의 풍량입니다. 장비 명판의 정격풍량 또는 실측 풍량을 입력하십시오.</div>
+            <input type="number" id="c-q" min="0" step="0.1">
+          </div>
+          <div class="field">
+            <label>측정 경과시간 <span class="opt">분(min)</span>
+              <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+            </label>
+            <div class="info-box" hidden>송풍을 시작한 시점부터 아래 "측정농도"를 측정한 시점까지 흐른 시간을 분 단위로 입력하십시오. (예: 10분 경과 후 측정했다면 10 입력)</div>
+            <input type="number" id="c-t" min="0" step="1" placeholder="예: 10">
+          </div>
+          <div class="field">
+            <label>초기농도 C0 <span class="opt">ppm</span>
+              <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+            </label>
+            <div class="info-box" hidden>송풍을 <b>시작하기 전</b> 시점의 농도입니다. 사전 측정값이 없으면 0으로 두어도 됩니다.</div>
+            <input type="number" id="c-c0" value="0" min="0" step="0.1">
+          </div>
+          <div class="field">
+            <label>측정농도 C(t) <span class="opt">ppm</span>
+              <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+            </label>
+            <div class="info-box" hidden>위에서 입력한 "측정 경과시간"이 흐른 <b>뒤</b> 실제로 측정한 농도입니다. (C0과 혼동 주의: C0=측정 시작 전, C(t)=시간 경과 후)</div>
+            <input type="number" id="c-ct" min="0" step="0.1">
+          </div>
+          <div class="field">
+            <label>목표(허용) 농도 기준 <span class="opt">ppm</span>
+              <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+            </label>
+            <div class="info-box" hidden>해당 물질의 물질안전보건자료(MSDS) "노출기준" 항목 또는 고용노동부 고시 「화학물질의 분류·표시 및 물질안전보건자료에 관한 기준」의 노출기준을 확인해 입력하십시오.</div>
+            <input type="number" id="c-callow" min="0" step="0.1">
+          </div>
+          <div class="field">
+            <label>안전계수 K
+              <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+            </label>
+            <div class="info-box" hidden>계산값에 곱하는 여유율입니다. 농도 분포가 불균일할 수 있는 점을 고려해 통상 1.5~3을 적용합니다. 확실하지 않으면 2를 권장합니다.</div>
+            <input type="number" id="c-k" value="2" min="1" step="0.1">
+          </div>
+        </div>
+        <div id="c-reliability" class="hint"></div>
+      </div>
+
+    </div>
+    <div class="nav-row">
+      <button class="btn secondary" onclick="goStep(2)">← 이전</button>
+      <button class="btn" onclick="goStep(4)">다음 : 계산 결과 →</button>
+    </div>
+  </div>
+
+  <!-- ===================== STEP 4 ===================== -->
+  <div class="step" data-step="4">
+    <div class="card">
+      <h2>4단계 · 필요환기량 산출 결과</h2>
+      <p class="sub" id="step4-sub">-</p>
+
+      <div class="result-box" id="result-box"></div>
+
+      <div class="formula-box" id="formula-box"></div>
+      <div id="result-notes"></div>
+    </div>
+    <div class="nav-row">
+      <button class="btn secondary" onclick="goStep(3)">← 이전</button>
+      <button class="btn" onclick="goStep(5)">다음 : 송배풍기 매칭 →</button>
+    </div>
+  </div>
+
+  <!-- ===================== STEP 5 ===================== -->
+  <div class="step" data-step="5">
+    <div class="card">
+      <h2>5단계 · 보유 송배풍기 매칭</h2>
+      <p class="sub">보유 장비를 등록하면, 4단계에서 산출된 필요환기량 대비 필요 대수를 자동 계산합니다.
+        <button type="button" class="info-toggle" onclick="toggleInfo(this)">ⓘ</button>
+      </p>
+      <div class="info-box" hidden>
+        <b>간편 보정</b>: 기존 방식으로 정격풍량 × 유효율을 적용합니다. 덕트 길이·굴곡, 필터 저항 등을 정확히 모르면 기본값 75%를 사용합니다.<br>
+        <b>제조사 운전점</b>: 제조사 성능곡선에서 실제 운전 정압에 해당하는 풍량을 직접 입력합니다.<br>
+        <b>현장 실측</b>: 풍속·덕트 단면적 등으로 현장에서 확인한 실제 풍량을 직접 입력합니다. 세 방식 중 가장 직접적인 값입니다.<br>
+        <b>덕트·정압 선택 입력</b>: 계산 근거를 기록하고 덕트 평균 유속을 확인하는 항목입니다. 덕트 조건만으로 실제 풍량을 확정하지 않으며 제조사 성능곡선 또는 현장 실측값과 함께 사용하십시오.<br>
+        <b>방폭</b>: 인화성 가스·증기가 있을 수 있는 장소에서는 방폭인증 장비 사용이 필요합니다. 해당 장비가 방폭인증을 받았다면 체크하십시오.<br>
+        <b>적용풍량</b>: 선택한 방식에 따라 계산 또는 직접 입력되어 장비 대수와 총 공급풍량 산정에 사용되는 값입니다.
+      </div>
+
+      <table id="fan-table" class="responsive-table">
+        <thead>
+          <tr>
+            <th style="width:17%;">장비명</th>
+            <th style="width:11%;">정격풍량<br>(㎥/h)</th>
+            <th style="width:15%;">풍량 적용방식</th>
+            <th style="width:12%;">보정값</th>
+            <th style="width:7%;">방폭</th>
+            <th style="width:12%;">적용풍량<br>(㎥/h)</th>
+            <th style="width:9%;">계획 대수</th>
+            <th style="width:11%;">공급풍량<br>(㎥/h)</th>
+            <th style="width:6%;"></th>
+          </tr>
+        </thead>
+        <tbody id="fan-tbody"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="7" style="text-align:right;">총 공급풍량 합계</td>
+            <td id="fan-total-supply">0</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div style="display:flex;gap:8px;margin:12px 0 4px;flex-wrap:wrap;">
+        <button class="btn secondary" onclick="addFanRow()">+ 장비 추가</button>
+        <button class="btn secondary" onclick="exportFans()"><svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> JSON 내보내기</button>
+        <label class="btn ghost" style="cursor:pointer;">
+          <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> JSON 불러오기
+          <input type="file" accept=".json" onchange="importFans(event)" style="display:none;">
+        </label>
+        <button class="btn ghost" onclick="toggleConverter()">🔁 풍량 단위 변환기</button>
+      </div>
+
+      <div id="unit-converter" class="note" style="display:none;">
+        <b>풍량 단위 변환기</b> <span class="hint">— 장비 스펙표가 다른 단위(CFM 등)로 표기된 경우 여기서 ㎥/h(CMH)로 환산 후 위 표에 입력하십시오.</span>
+        <div class="grid cols-3" style="margin-top:10px;">
+          <div class="field">
+            <label>값</label>
+            <input type="number" id="conv-value" step="0.01" onchange="runConvert()">
+          </div>
+          <div class="field">
+            <label>변환 전 단위</label>
+            <select id="conv-from" onchange="runConvert()">
+              <option value="CMH">㎥/h (CMH)</option>
+              <option value="CMM">㎥/min (CMM)</option>
+              <option value="Lmin">L/min</option>
+              <option value="CFM">CFM (ft³/min)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>변환 후 단위</label>
+            <select id="conv-to" onchange="runConvert()">
+              <option value="CMH" selected>㎥/h (CMH)</option>
+              <option value="CMM">㎥/min (CMM)</option>
+              <option value="Lmin">L/min</option>
+              <option value="CFM">CFM (ft³/min)</option>
+            </select>
+          </div>
+        </div>
+        <div class="metric" style="max-width:280px;">
+          <div class="label">변환 결과</div>
+          <div class="value" id="conv-result">0.00</div>
+        </div>
+      </div>
+
+      <div class="note" id="fan-summary" style="margin-top:16px;"></div>
+    </div>
+    <div class="nav-row">
+      <button class="btn secondary" onclick="goStep(4)">← 이전</button>
+      <button class="btn" onclick="goStep(6)">다음 : 결과 리포트 →</button>
+    </div>
+  </div>
+
+  <!-- ===================== STEP 6 ===================== -->
+  <div class="step" data-step="6">
+    <div class="card report" id="report-card">
+      <h2 class="no-print" style="margin-bottom:2px;">6단계 · 결과 리포트</h2>
+      <p class="sub no-print">작업허가서 첨부용으로 인쇄하거나 저장할 수 있습니다.</p>
+      <details class="language-options no-print">
+        <summary>🌐 함께 인쇄할 번역 보조 페이지 선택</summary>
+        <p class="hint">현재 화면 언어가 기본 결과서로 먼저 출력됩니다. 선택한 추가 언어마다 새 페이지가 추가됩니다.</p>
+        <div class="language-grid" id="print-language-grid"></div>
+      </details>
+      <div class="print-title" id="print-title"></div>
+      <div id="report-body"></div>
+      <div id="translated-reports"></div>
+    </div>
+    <div class="nav-row no-print">
+      <button class="btn secondary" onclick="goStep(5)">← 이전</button>
+      <button class="btn" onclick="printReport()">🖨 인쇄 / PDF 저장</button>
+    </div>
+  </div>
+
+</div>
+
+  <script src="scripts/core.js"></script>
+  <script src="scripts/i18n.js"></script>
+  <script src="scripts/navigation.js"></script>
+  <script src="scripts/geometry.js"></script>
+  <script src="scripts/calculations.js"></script>
+  <script src="scripts/fans.js"></script>
+  <script src="scripts/platform.js"></script>
+  <script src="scripts/reporting.js"></script>
+  <script src="scripts/session.js"></script>
+  <script src="scripts/init.js"></script>
+  <script src="scripts/bootstrap.js"></script>
+
+<link rel="stylesheet" href="styles/v05.css">
+<script src="scripts/v05.js"></script>
+
+</body>
+</html>
