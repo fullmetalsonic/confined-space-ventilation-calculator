@@ -170,7 +170,7 @@ test("saved sessions restore validated profile, volume, and equipment data", asy
   window.restoreSession(saved);
   const restored = window.serializeSession();
   assert.equal(restored.spaceName, "복원 검수");
-  assert.deepEqual(restored.zones[0].vals, { l: 2, w: 3, h: 4 });
+  assert.equal(JSON.stringify(restored.zones[0].vals), JSON.stringify({ l: 2, w: 3, h: 4 }));
   assert.equal(restored.fans[0].flowMethod, "measured");
   assert.equal(document.querySelector("#jurisdiction-profile").value, "us-general");
   assert.equal(document.querySelector("#paper-size").value, "Letter");
