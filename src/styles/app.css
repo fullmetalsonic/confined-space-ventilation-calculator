@@ -2129,8 +2129,17 @@ html{scroll-padding-top:12px;}
   @media(max-width:720px){
     .global-profile{grid-template-columns:1fr;}
     .global-profile .profile-note,.global-profile .profile-source{grid-column:1;}
+    /* A phone must never compress a permit item or legal-reference row into
+       a fixed-height, multi-column block. Long profile names and translated
+       text need to grow downward instead of painting over the next row. */
+    .permit-checklist{grid-template-columns:1fr;gap:8px;}
+    .permit-check{min-height:0;}
+    .permit-subcheck{grid-template-columns:1fr;gap:2px;}
+    .permit-subcheck b,.permit-subcheck span{min-width:0;overflow-wrap:anywhere;}
     .report-source-table col:first-child{width:30%!important;}
     .report-source-table col:last-child{width:70%!important;}
+    .report-source-table tbody tr,.report-source-table td{height:auto;min-height:0;}
+    .report-source-table td{vertical-align:top;padding-top:8px;padding-bottom:8px;}
     .report-source-table td:first-child{padding-left:7px;padding-right:7px;font-size:11.5px;line-height:1.35;}
     .report-source-table td:nth-child(2){font-size:11.5px;line-height:1.45;}
   }

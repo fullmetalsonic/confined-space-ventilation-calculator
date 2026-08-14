@@ -4,6 +4,7 @@ import test from "node:test";
 import { JSDOM, VirtualConsole } from "jsdom";
 
 const RELEASE = new URL("../../docs/index.html", import.meta.url);
+const SOURCE_CSS = new URL("../../src/styles/app.css", import.meta.url);
 
 async function loadApp() {
   const html = await readFile(RELEASE, "utf8");
@@ -328,6 +329,41 @@ test("fan export and validated import update the equipment table", async () => {
   assert.equal(window.serializeSession().fans[0].name, "불러온 팬");
   assert.equal(window.serializeSession().fans[0].appliedFlow, 700);
   assert.equal(document.querySelector('#fan-tbody input[type="text"]').value, "불러온 팬");
+  assert.deepEqual(errors, []);
+  dom.window.close();
+});
+
+test("mobile report layout and every language-profile-method state stay renderable", async () => {
+  const css = await readFile(SOURCE_CSS, "utf8");
+  const mobileRules = css.slice(css.lastIndexOf("@media(max-width:720px)"));
+  assert.match(mobileRules, /\.permit-checklist\{grid-template-columns:1fr;gap:8px;\}/);
+  assert.match(mobileRules, /\.permit-subcheck\{grid-template-columns:1fr;gap:2px;\}/);
+  assert.match(mobileRules, /\.report-source-table tbody tr,\.report-source-table td\{height:auto;min-height:0;\}/);
+
+  const { dom, document, window, errors } = await loadApp();
+  const languages = Array.from(document.querySelector("#ui-language").options, option => option.value);
+  const profiles = Array.from(document.querySelector("#jurisdiction-profile").options, option => option.value);
+  assert.equal(languages.length, 32);
+  assert.equal(profiles.length, 9);
+
+  for (const mode of ["A", "B", "C"]) {
+    window.selectMode(mode);
+    for (const language of languages) {
+      window.setUiLanguage(language);
+      for (const profile of profiles) {
+        window.setJurisdictionProfile(profile);
+        window.renderReport();
+        assert.equal(document.querySelectorAll("#report-body .permit-check").length, 4);
+        const referenceRows = document.querySelectorAll("#report-body .report-source-table tbody tr");
+        assert.ok(referenceRows.length >= 6);
+        for (const row of referenceRows) {
+          assert.equal(row.cells.length, 2);
+          assert.ok(row.cells[0].textContent.trim());
+          assert.ok(row.cells[1].textContent.trim());
+        }
+      }
+    }
+  }
   assert.deepEqual(errors, []);
   dom.window.close();
 });
