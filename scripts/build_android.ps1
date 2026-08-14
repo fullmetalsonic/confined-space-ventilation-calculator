@@ -30,8 +30,19 @@ if (-not $SdkRoot) {
     $SdkRoot = (Resolve-Path $SdkRoot).Path
 }
 
-$buildTools = Join-Path $SdkRoot "build-tools\35.0.0"
-$androidJar = Join-Path $SdkRoot "platforms\android-35\android.jar"
+$buildTools = Get-ChildItem -LiteralPath (Join-Path $SdkRoot "build-tools") -Directory -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -match '^\d+\.\d+\.\d+$' } |
+    Sort-Object { [version]$_.Name } -Descending |
+    Select-Object -First 1
+$platform = Get-ChildItem -LiteralPath (Join-Path $SdkRoot "platforms") -Directory -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -match '^android-\d+(?:\.\d+)?$' } |
+    Sort-Object { [version]($_.Name -replace '^android-','') } -Descending |
+    Select-Object -First 1
+if (-not $buildTools -or -not $platform) {
+    throw "Android SDK Build-Tools 또는 플랫폼을 찾지 못했습니다: $SdkRoot"
+}
+$buildTools = $buildTools.FullName
+$androidJar = Join-Path $platform.FullName "android.jar"
 $aapt2 = Join-Path $buildTools "aapt2.exe"
 $aapt = Join-Path $buildTools "aapt.exe"
 $d8 = Join-Path $buildTools "d8.bat"
