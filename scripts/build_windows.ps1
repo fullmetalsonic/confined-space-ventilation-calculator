@@ -25,7 +25,7 @@ if (-not (Test-Path -LiteralPath $html)) {
 $env:PYTHONPATH = if ($env:PYTHONPATH) { "$packages;$env:PYTHONPATH" } else { $packages }
 $output = Join-Path $root "dist\windows"
 $safeVersion = $Version.Replace('.', '_')
-$buildRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("ventcalc-$safeVersion-windows-" + [Guid]::NewGuid().ToString("N"))
+$buildRoot = Join-Path $root (".build\windows-build\ventcalc-$safeVersion-windows-" + [Guid]::NewGuid().ToString("N"))
 $work = Join-Path $buildRoot "work"
 $spec = Join-Path $buildRoot "spec"
 $tempOutput = Join-Path $buildRoot "dist"
