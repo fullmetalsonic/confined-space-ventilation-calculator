@@ -329,11 +329,14 @@ function setV04SupplementalPrintLanguage(code,checked){
   else v04SupplementalPrintLanguages.delete(code);
   renderTranslatedReports();
 }
+function v04SupplementalLanguageLabel(code,fallback){
+  try{return new Intl.DisplayNames([localeV04For(currentUiLanguage)],{type:'language'}).of(code)||fallback;}catch(_){return fallback;}
+}
 function renderV04PrintLanguageGrid(){
   const grid=document.getElementById('print-language-grid');
   if(grid){
-    grid.innerHTML=UI_LANGUAGE_META.filter(item=>item[0]!==currentUiLanguage).map(([code,,native])=>
-      `<label><input type="checkbox" name="print-lang" value="${code}" ${v04SupplementalPrintLanguages.has(code)?'checked':''} onchange="setV04SupplementalPrintLanguage('${code}',this.checked)"><span class="lang-native">${native}</span></label>`
+    grid.innerHTML=UI_LANGUAGE_META.filter(item=>item[0]!==currentUiLanguage).map(([code,mainLanguageName,native])=>
+      `<label><input type="checkbox" name="print-lang" value="${code}" ${v04SupplementalPrintLanguages.has(code)?'checked':''} onchange="setV04SupplementalPrintLanguage('${code}',this.checked)"><span class="lang-main">${escapeV04(v04SupplementalLanguageLabel(code,mainLanguageName))}</span><span class="lang-native"> · ${native}</span></label>`
     ).join('');
   }
   const meta=v04LanguageMeta(currentUiLanguage);
