@@ -49,6 +49,10 @@ test("initial screen loads without runtime errors", async () => {
   assert.match(document.querySelector('#jurisdiction-profile option[value="kr"]').textContent, /대한민국/);
   assert.equal(document.querySelector("#ui-language").getAttribute("aria-label"), "화면 언어");
   assert.equal(document.querySelector(".credit").textContent.trim(), "H.S.H");
+  assert.deepEqual(
+    Array.from(document.querySelectorAll("#fan-table thead th"), (cell) => cell.style.width),
+    ["14%", "10%", "20%", "10%", "8%", "11%", "9%", "11%", "7%"],
+  );
   assert.deepEqual(errors, []);
   dom.window.close();
 });
@@ -560,6 +564,7 @@ test("mobile report layout and every language-profile-method state stay renderab
   assert.match(mobileRules, /\.report-source-table tbody tr,\.report-source-table td\{height:auto;min-height:0;\}/);
   assert.match(css,/\.stepper\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\);overflow:visible/);
   assert.match(css,/@media\(min-width:721px\) and \(max-width:980px\)\{\s*\.global-profile\{grid-template-columns:minmax\(0,1fr\) minmax\(0,1fr\);\}/);
+  assert.match(css,/@media\(min-width:721px\) and \(max-width:980px\)\{[\s\S]*?#fan-table thead\{display:none;\}/);
   assert.doesNotMatch(css,/content:"VENTILATION PLANNING"/);
   assert.match(printCss,/:root\[dir="rtl"\] #unit-system[^}]+direction:ltr;text-align:left;unicode-bidi:isolate;/);
 
