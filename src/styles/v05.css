@@ -28,4 +28,15 @@
     [data-v05-print-density="compact"] .report table.sig-table tbody tr,[data-v05-print-density="compact"] .report table.sig-table tbody td{height:27px!important;line-height:27px;}
     [data-v05-print-density="compact"] .report-tail{break-inside:auto;page-break-inside:auto;}
     [data-v05-print-density="compact"] .sig-table{break-inside:avoid;page-break-inside:avoid;}
+    /* 1~4 blower reports prioritize a single A4 sheet without dropping safety or legal content. */
+    [data-v05-print-layout="one-page"] .print-redundant-summary{display:none;}
+    [data-v05-print-layout="one-page"] .print-overview-item{min-height:22px;padding:2px 4px;}
+    [data-v05-print-layout="one-page"] .print-key-metrics > div{min-height:27px;padding:2px 4px;}
+    [data-v05-print-layout="one-page"] .report-section h3{margin-top:2px;}
+    [data-v05-print-layout="one-page"] .report table{margin:1px 0 2px;}
+    /* Tables may cross a page only between rows: never discard a legal source just to avoid a page break. */
+    [data-v05-print-layout] .report-source-table,
+    [data-v05-print-layout] .report-equipment-table{break-inside:auto!important;page-break-inside:auto!important;}
+    [data-v05-print-layout] .report-source-table tr,
+    [data-v05-print-layout] .report-equipment-table tr{break-inside:avoid;page-break-inside:avoid;}
   }

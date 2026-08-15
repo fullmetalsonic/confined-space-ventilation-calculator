@@ -3854,9 +3854,11 @@ function renderReport(){
       <thead><tr><th>장비명</th><th>정격풍량(㎥/h)</th><th>풍량 근거</th><th>방폭</th><th>적용풍량(㎥/h)</th><th>계획대수</th><th>필요대수</th></tr></thead>
       <tbody>${fanRows || '<tr><td colspan="7">등록된 장비 없음</td></tr>'}</tbody>
     </table>
-    <div class="kv"><div>필요환기량(최소 기준)</div><div>${formatV04Number(requiredQ,2)} ㎥/h 이상</div></div>
-    <div class="kv"><div>계획 총 공급풍량</div><div>${formatV04Number(totalSupply,2)} ㎥/h</div></div>
-    <div class="kv"><div>여유율</div><div>${margin}%</div></div>
+    <div class="print-redundant-summary">
+      <div class="kv"><div>필요환기량(최소 기준)</div><div>${formatV04Number(requiredQ,2)} ㎥/h 이상</div></div>
+      <div class="kv"><div>계획 총 공급풍량</div><div>${formatV04Number(totalSupply,2)} ㎥/h</div></div>
+      <div class="kv"><div>여유율</div><div>${margin}%</div></div>
+    </div>
     ${(r.mode==='A' && totalSupply>0) ? `<div class="kv"><div>최초 급기 소요시간</div><div>약 ${((r.initial/totalSupply)*60).toFixed(1)} 분 (연속 가동 유지)</div></div>` : ''}`);
 
   if(r.mode==='B' || r.mode==='C'){
@@ -5297,6 +5299,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
     [data-v05-print-density="compact"] .report table.sig-table tbody tr,[data-v05-print-density="compact"] .report table.sig-table tbody td{height:27px!important;line-height:27px;}
     [data-v05-print-density="compact"] .report-tail{break-inside:auto;page-break-inside:auto;}
     [data-v05-print-density="compact"] .sig-table{break-inside:avoid;page-break-inside:avoid;}
+    /* 1~4 blower reports prioritize a single A4 sheet without dropping safety or legal content. */
+    [data-v05-print-layout="one-page"] .print-redundant-summary{display:none;}
+    [data-v05-print-layout="one-page"] .print-overview-item{min-height:22px;padding:2px 4px;}
+    [data-v05-print-layout="one-page"] .print-key-metrics > div{min-height:27px;padding:2px 4px;}
+    [data-v05-print-layout="one-page"] .report-section h3{margin-top:2px;}
+    [data-v05-print-layout="one-page"] .report table{margin:1px 0 2px;}
+    /* Tables may cross a page only between rows: never discard a legal source just to avoid a page break. */
+    [data-v05-print-layout] .report-source-table,
+    [data-v05-print-layout] .report-equipment-table{break-inside:auto!important;page-break-inside:auto!important;}
+    [data-v05-print-layout] .report-source-table tr,
+    [data-v05-print-layout] .report-equipment-table tr{break-inside:avoid;page-break-inside:avoid;}
   }
 </style>
 <script>
@@ -5515,7 +5528,15 @@ function v05TraceHTML(){
   const p=v05Profile(),now=new Date(),unit=v04UnitSystem==='us'?'US customary + SI':'SI',input=v05InputUnits==='us'?'ft / ft³ / CFM':'m / m³ / m³/h';
   return `<div class="v05-print-trace"><div><b>Tool</b><span class="v05-ltr">${V05_VERSION}</span></div><div><b>Legal profile</b>${escapeV04(p.label)} <span class="v05-ltr">v${escapeV04(p.profileVersion||'—')}</span></div><div><b>Approval</b>${escapeV04(v05ApprovalText(p))}</div><div><b>Review baseline</b><span class="v05-ltr">${escapeV04(p.reviewedAt||'Unverified')}</span></div><div><b>Screen language</b>${escapeV04((UI_LANGUAGE_META.find(item=>item[0]===currentUiLanguage)||[])[1]||currentUiLanguage)}</div><div><b>Units</b><span class="v05-ltr">${unit}; input ${input}</span></div><div><b>Generated</b><time class="v05-ltr">${escapeV04(now.toISOString().replace('T',' ').slice(0,19)+' UTC')}</time></div></div>`;
 }
-function v05AddTrace(container){if(!container)return;container.dataset.v05PrintDensity='compact';container.querySelectorAll?.('.v05-print-trace').forEach(node=>node.remove());container.insertAdjacentHTML('afterbegin',v05TraceHTML());}
+function v05AddTrace(container){
+  if(!container)return;
+  const fanCount=Array.isArray(state?.fans)?state.fans.length:0;
+  container.dataset.v05PrintDensity='compact';
+  container.dataset.v05FanCount=String(fanCount);
+  container.dataset.v05PrintLayout=fanCount<=4?'one-page':'multi-page';
+  container.querySelectorAll?.('.v05-print-trace').forEach(node=>node.remove());
+  container.insertAdjacentHTML('afterbegin',v05TraceHTML());
+}
 const v05RenderReport=renderReport;
 renderReport=function(){v05RenderReport();v05AddTrace(document.querySelector('.report'));};
 const v05RenderTranslatedReports=renderTranslatedReports;

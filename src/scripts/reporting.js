@@ -77,9 +77,11 @@ function renderReport(){
       <thead><tr><th>장비명</th><th>정격풍량(㎥/h)</th><th>풍량 근거</th><th>방폭</th><th>적용풍량(㎥/h)</th><th>계획대수</th><th>필요대수</th></tr></thead>
       <tbody>${fanRows || '<tr><td colspan="7">등록된 장비 없음</td></tr>'}</tbody>
     </table>
-    <div class="kv"><div>필요환기량(최소 기준)</div><div>${formatV04Number(requiredQ,2)} ㎥/h 이상</div></div>
-    <div class="kv"><div>계획 총 공급풍량</div><div>${formatV04Number(totalSupply,2)} ㎥/h</div></div>
-    <div class="kv"><div>여유율</div><div>${margin}%</div></div>
+    <div class="print-redundant-summary">
+      <div class="kv"><div>필요환기량(최소 기준)</div><div>${formatV04Number(requiredQ,2)} ㎥/h 이상</div></div>
+      <div class="kv"><div>계획 총 공급풍량</div><div>${formatV04Number(totalSupply,2)} ㎥/h</div></div>
+      <div class="kv"><div>여유율</div><div>${margin}%</div></div>
+    </div>
     ${(r.mode==='A' && totalSupply>0) ? `<div class="kv"><div>최초 급기 소요시간</div><div>약 ${((r.initial/totalSupply)*60).toFixed(1)} 분 (연속 가동 유지)</div></div>` : ''}`);
 
   if(r.mode==='B' || r.mode==='C'){

@@ -5,6 +5,7 @@ import { JSDOM, VirtualConsole } from "jsdom";
 
 const RELEASE = new URL("../../docs/index.html", import.meta.url);
 const SOURCE_CSS = new URL("../../src/styles/app.css", import.meta.url);
+const PRINT_CSS = new URL("../../src/styles/v05.css", import.meta.url);
 
 async function loadApp() {
   const html = await readFile(RELEASE, "utf8");
@@ -158,6 +159,35 @@ test("blower matching, report rendering, and invalid-input blocking work", async
   setValue(window, document.querySelector("#b-w"), 0);
   window.goStep(4);
   assert.ok(document.querySelector("#validation-summary").classList.contains("show"));
+  assert.deepEqual(errors, []);
+  dom.window.close();
+});
+
+test("print layout prioritizes one A4 page through four blowers and permits row-level overflow after that", async () => {
+  const css = await readFile(PRINT_CSS, "utf8");
+  assert.match(css, /\[data-v05-print-layout="one-page"\] \.print-redundant-summary\{display:none;\}/);
+  assert.match(css, /\.report-source-table,\s*\n\s*\[data-v05-print-layout\] \.report-equipment-table\{break-inside:auto!important;page-break-inside:auto!important;\}/);
+
+  const { dom, document, window, errors } = await loadApp();
+  window.selectMode("A");
+  setValue(window, document.querySelector('input[type="number"]'), 100);
+  window.computeAndRenderStep4();
+  window.renderReport();
+  assert.equal(document.querySelector(".report").dataset.v05PrintLayout, "one-page");
+  assert.equal(document.querySelector(".report").dataset.v05FanCount, "1");
+  assert.equal(document.querySelectorAll(".print-redundant-summary .kv").length, 3);
+
+  window.addFanRow("송풍기 #2", 500, 75, false);
+  window.addFanRow("송풍기 #3", 500, 75, false);
+  window.addFanRow("송풍기 #4", 500, 75, false);
+  window.renderReport();
+  assert.equal(document.querySelector(".report").dataset.v05PrintLayout, "one-page");
+  assert.equal(document.querySelector(".report").dataset.v05FanCount, "4");
+
+  window.addFanRow("송풍기 #5", 500, 75, false);
+  window.renderReport();
+  assert.equal(document.querySelector(".report").dataset.v05PrintLayout, "multi-page");
+  assert.equal(document.querySelector(".report").dataset.v05FanCount, "5");
   assert.deepEqual(errors, []);
   dom.window.close();
 });

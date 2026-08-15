@@ -213,7 +213,15 @@ function v05TraceHTML(){
   const p=v05Profile(),now=new Date(),unit=v04UnitSystem==='us'?'US customary + SI':'SI',input=v05InputUnits==='us'?'ft / ft³ / CFM':'m / m³ / m³/h';
   return `<div class="v05-print-trace"><div><b>Tool</b><span class="v05-ltr">${V05_VERSION}</span></div><div><b>Legal profile</b>${escapeV04(p.label)} <span class="v05-ltr">v${escapeV04(p.profileVersion||'—')}</span></div><div><b>Approval</b>${escapeV04(v05ApprovalText(p))}</div><div><b>Review baseline</b><span class="v05-ltr">${escapeV04(p.reviewedAt||'Unverified')}</span></div><div><b>Screen language</b>${escapeV04((UI_LANGUAGE_META.find(item=>item[0]===currentUiLanguage)||[])[1]||currentUiLanguage)}</div><div><b>Units</b><span class="v05-ltr">${unit}; input ${input}</span></div><div><b>Generated</b><time class="v05-ltr">${escapeV04(now.toISOString().replace('T',' ').slice(0,19)+' UTC')}</time></div></div>`;
 }
-function v05AddTrace(container){if(!container)return;container.dataset.v05PrintDensity='compact';container.querySelectorAll?.('.v05-print-trace').forEach(node=>node.remove());container.insertAdjacentHTML('afterbegin',v05TraceHTML());}
+function v05AddTrace(container){
+  if(!container)return;
+  const fanCount=Array.isArray(state?.fans)?state.fans.length:0;
+  container.dataset.v05PrintDensity='compact';
+  container.dataset.v05FanCount=String(fanCount);
+  container.dataset.v05PrintLayout=fanCount<=4?'one-page':'multi-page';
+  container.querySelectorAll?.('.v05-print-trace').forEach(node=>node.remove());
+  container.insertAdjacentHTML('afterbegin',v05TraceHTML());
+}
 const v05RenderReport=renderReport;
 renderReport=function(){v05RenderReport();v05AddTrace(document.querySelector('.report'));};
 const v05RenderTranslatedReports=renderTranslatedReports;
