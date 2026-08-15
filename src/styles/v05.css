@@ -15,8 +15,9 @@
   :root[dir="rtl"] .v05-print-trace{direction:rtl;}:root[dir="rtl"] .v05-print-trace .v05-ltr{direction:ltr;text-align:left;}
   @media (max-width:720px){
     header.app-header{overflow-x:clip;}
-    .header-tools,.ui-language-control{min-width:0;max-width:100%;}
-    .ui-language-control select{max-width:100%;}
+    .header-tools{display:grid;grid-template-columns:minmax(0,1fr);min-width:0;max-width:100%;}
+    .ui-language-control{min-width:0;max-width:100%;display:grid;grid-template-columns:minmax(0,1fr);}
+    .ui-language-control span,.ui-language-control select{min-width:0;width:100%;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
     .stepper{scroll-snap-type:x mandatory;scroll-padding-inline:12px;}
     .stepper li{scroll-snap-align:center;}
     .v05-profile-governance dl{grid-template-columns:max-content minmax(0,1fr);gap:3px 9px;}.v05-regional-preference{grid-template-columns:1fr;gap:8px;}.v05-regional-values{justify-content:flex-start;}.v05-regional-preference button{width:100%;}.v05-print-trace{grid-template-columns:1fr 1fr;}.v05-recovery-bar{align-items:stretch;}.v05-recovery-bar button{min-height:40px;}
