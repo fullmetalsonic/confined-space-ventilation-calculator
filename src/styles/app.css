@@ -1398,7 +1398,9 @@
       min-height:auto;
       padding:19px 16px 17px;
     }
-    header.app-header::before{height:20px;margin-bottom:7px;font-size:8px;}
+    /* The decorative English strapline and off-canvas ring both caused mixed language/overflow on phones. */
+    header.app-header::before{display:none;}
+    header.app-header::after{right:0;}
     header.app-header h1{padding-right:0;font-size:18px;}
     header.app-header p{padding-right:0;font-size:10.5px;}
     .header-tools{
