@@ -237,10 +237,15 @@ test("translated report output and measurement reliability warnings render witho
   setValue(window, document.querySelector("#c-k"), 2);
   window.computeAndRenderStep4();
   assert.match(document.querySelector("#result-notes").textContent, /신뢰도 낮음/);
-  const printLanguage = document.querySelector('#print-language-grid input[value="en"]');
-  printLanguage.checked = true;
-  printLanguage.dispatchEvent(new window.Event("change", { bubbles: true }));
-  assert.ok(document.querySelectorAll(".translated-report").length >= 1);
+  const printLanguages = Array.from(document.querySelectorAll('#print-language-grid input'));
+  for (const input of printLanguages) {
+    input.checked = true;
+    input.dispatchEvent(new window.Event("change", { bubbles: true }));
+  }
+  window.renderTranslatedReports();
+  assert.equal(document.querySelectorAll(".translated-report").length, printLanguages.length);
+  assert.equal(document.querySelectorAll(".sig-table").length, 0);
+  assert.ok(document.querySelectorAll(".translated-legal-table").length >= 1);
   assert.deepEqual(errors, []);
   dom.window.close();
 });
@@ -354,6 +359,7 @@ test("mobile report layout and every language-profile-method state stay renderab
         window.setJurisdictionProfile(profile);
         window.renderReport();
         assert.equal(document.querySelectorAll("#report-body .permit-check").length, 4);
+        assert.equal(document.querySelectorAll(".sig-table").length, 0);
         const referenceRows = document.querySelectorAll("#report-body .report-source-table tbody tr");
         assert.ok(referenceRows.length >= 6);
         for (const row of referenceRows) {

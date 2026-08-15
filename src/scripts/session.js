@@ -927,8 +927,8 @@ renderTranslatedReports=function(){
     section.querySelector('.translated-legal-heading')?.remove();
     section.querySelector('.translated-legal-table')?.remove();
     section.querySelector('.translated-legal-source')?.remove();
-    const signature=section.querySelector('.translated-signature-table');
-    if(signature)signature.insertAdjacentHTML('beforebegin',buildV04TranslatedLegalHTML(code));
+    const footer=section.querySelector('.translated-document-footer');
+    if(footer)footer.insertAdjacentHTML('beforebegin',buildV04TranslatedLegalHTML(code));
     updateV04TranslatedValues(section,code);
   });
   if(currentUiLanguage!=='ko'&&v04SupplementalPrintLanguages.has('ko')){
