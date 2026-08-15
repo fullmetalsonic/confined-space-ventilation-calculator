@@ -553,6 +553,7 @@ test("fan export and validated import update the equipment table", async () => {
 
 test("mobile report layout and every language-profile-method state stay renderable", async () => {
   const css = await readFile(SOURCE_CSS, "utf8");
+  const printCss = await readFile(PRINT_CSS, "utf8");
   const mobileRules = css.slice(css.lastIndexOf("@media(max-width:720px)"));
   assert.match(mobileRules, /\.permit-checklist\{grid-template-columns:1fr;gap:8px;\}/);
   assert.match(mobileRules, /\.permit-subcheck\{grid-template-columns:1fr;gap:2px;\}/);
@@ -560,6 +561,7 @@ test("mobile report layout and every language-profile-method state stay renderab
   assert.match(css,/\.stepper\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\);overflow:visible/);
   assert.match(css,/@media\(min-width:721px\) and \(max-width:980px\)\{\s*\.global-profile\{grid-template-columns:minmax\(0,1fr\) minmax\(0,1fr\);\}/);
   assert.doesNotMatch(css,/content:"VENTILATION PLANNING"/);
+  assert.match(printCss,/:root\[dir="rtl"\] #unit-system[^}]+direction:ltr;text-align:left;unicode-bidi:isolate;/);
 
   const { dom, document, window, errors } = await loadApp();
   const languages = Array.from(document.querySelector("#ui-language").options, option => option.value);
