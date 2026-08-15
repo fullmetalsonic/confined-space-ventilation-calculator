@@ -169,7 +169,8 @@ if ($LASTEXITCODE -ne 0) { throw "APK 서명 실패" }
 if ($LASTEXITCODE -ne 0) { throw "APK 서명 검증 실패" }
 
 $outputDir = Join-Path $root "dist\android"
-$output = Join-Path $outputDir "밀폐공간_환기량_산정_도구_$Version.apk"
+$outputName = [System.IO.Path]::GetFileNameWithoutExtension($html) + ".apk"
+$output = Join-Path $outputDir $outputName
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 Copy-Item -LiteralPath $signed -Destination $output -Force
 

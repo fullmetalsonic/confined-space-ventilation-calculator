@@ -15,17 +15,8 @@ let v05DateFormat='ymd';
 let v05DraftTimer=0;
 let v05LastDraftAt='';
 
-function v05IsKorean(){return currentUiLanguage==='ko';}
-function v05Text(ko,en){return v05IsKorean()?ko:en;}
 function v05Terms(){return v04Terms(currentUiLanguage);}
 function v05ProfilePreferences(p=v05Profile()){return {paper:p?.regionalPreferences?.paper==='Letter'?'Letter':'A4',resultUnit:p?.regionalPreferences?.resultUnit==='us'?'us':'si',inputUnit:p?.regionalPreferences?.inputUnit==='us'?'us':'si',dateFormat:['locale','ymd','dmy','mdy'].includes(p?.regionalPreferences?.dateFormat)?p.regionalPreferences.dateFormat:'locale'};}
-function v05ApprovalText(p=v05Profile()){
-  return p?.approvalStatus==='local-ehs-approved'
-    ?v05Text('현지 EHS 승인 완료','Local EHS approved')
-    :p?.approvalStatus==='unverified'
-      ?v05Text('현지 법규·EHS 승인 미검증','Local law and EHS approval unverified')
-      :v05Text('공식 출처 검토 완료 · 현지 EHS 승인 대기','Official source reviewed · local EHS approval pending');
-}
 function v05FormatDate(date,code=currentUiLanguage){
   const d=date instanceof Date?date:new Date(date);if(Number.isNaN(d.getTime()))return '—';
   if(v05DateFormat==='locale')return v05BaseFormatDateFor(code,d);
@@ -39,7 +30,7 @@ formatV04Date=function(date=new Date()){return v05FormatDate(date,currentUiLangu
 function setV05DateFormat(value,automatic=false){
   v05DateFormat=['locale','ymd','dmy','mdy'].includes(value)?value:'locale';
   const select=document.getElementById('date-format');if(select)select.value=v05DateFormat;
-  const note=document.getElementById('date-format-note');if(note)note.textContent=v05Terms()[6]+': '+v05FormatDate(new Date(),currentUiLanguage);
+  const note=document.getElementById('date-format-note');if(note)note.textContent=(PRINT_I18N[currentUiLanguage]?.l?.date||v05Terms()[6])+': '+v05FormatDate(new Date(),currentUiLanguage);
   if(state.step===6)renderReport();
 }
 function parseV05Number(value){
@@ -84,12 +75,15 @@ function v05ProfileSelect(){
 }
 function v05RenderProfileGovernance(){
   const p=v05Profile(), source=document.getElementById('profile-source');if(!source)return;
-  const languageLabel=v05ProfileLanguageName(currentUiLanguage);
+  const languageLabel=v05BilingualLanguageName(currentUiLanguage,currentUiLanguage);
   const languageMismatch=!(V05_PROFILE_LANGUAGES[v04Jurisdiction]||[]).includes(currentUiLanguage);
-  const links=[[p.source,p.url],...(p.extraSources||[])].filter(item=>item[1]).map(([label,url])=>`<a href="${escapeV04(url)}" target="_blank" rel="noopener noreferrer">${escapeV04(label)}</a>`).join(' · ');
+  const sourceLanguage=v05LegalSourceLanguage(v04Jurisdiction),sourceLocale=localeV04For(sourceLanguage);
+  const sourceDir=['ar','fa','ur'].includes(sourceLanguage)?'rtl':'ltr';
+  const sourceLanguageLabel=v05BilingualLanguageName(sourceLanguage,currentUiLanguage);
+  const links=[[p.source,p.url],...(p.extraSources||[])].filter(item=>item[1]).map(([label,url])=>`<a lang="${escapeV04(sourceLocale)}" dir="${sourceDir}" href="${escapeV04(url)}" target="_blank" rel="noopener noreferrer">${escapeV04(label)}</a>`).join(' · ');
   const t=v05Terms(), profileName=v05ProfileDisplayName(v04Jurisdiction,currentUiLanguage);
   const warning=(v04Jurisdiction==='unverified'||languageMismatch)
-    ? `<div class="v05-profile-warning">${escapeV04(t[2])}: ${escapeV04(languageLabel)} · ${escapeV04(v05ProfileCountryName(v04Jurisdiction,currentUiLanguage))}</div>`:'';
+    ? `<div class="v05-profile-warning"><b>${escapeV04(getUiText(currentUiLanguage)[2])}:</b> ${escapeV04(languageLabel)} · <b>${escapeV04(t[1])}:</b> ${escapeV04(sourceLanguageLabel)}</div>`:'';
   source.innerHTML=`${warning}<div class="v05-profile-governance"><dl>
     <dt>${escapeV04(t[2])}</dt><dd>${escapeV04(profileName)}</dd>
     <dt>v</dt><dd class="v05-ltr">${escapeV04(p.profileVersion||'—')} · ${escapeV04(p.reviewedAt||'—')}</dd>
@@ -111,9 +105,15 @@ function applyV05RegionalRecommendation(){
   v05RenderProfileGovernance();
 }
 function v05RefreshOperationalLabels(){
-  const t=v05Terms();
+  const t=v05Terms(),profileUi=V04_UI[currentUiLanguage]||V04_UI.en;
+  const dateText=`${PRINT_I18N[currentUiLanguage]?.l?.date||t[6]} · YYYY/MM/DD`;
   const input=document.querySelector('label[for="input-unit-system"]');if(input)input.textContent=t[0];
-  const date=document.querySelector('label[for="date-format"]');if(date)date.textContent=t[6];
+  const inputSelect=document.getElementById('input-unit-system');if(inputSelect)inputSelect.setAttribute('aria-label',t[0]);
+  const resultSelect=document.getElementById('unit-system');if(resultSelect)resultSelect.setAttribute('aria-label',t[0]);
+  const date=document.querySelector('label[for="date-format"]');if(date)date.textContent=dateText;
+  const dateSelect=document.getElementById('date-format');if(dateSelect)dateSelect.setAttribute('aria-label',dateText);
+  const profileSelect=document.getElementById('jurisdiction-profile');if(profileSelect)profileSelect.setAttribute('aria-label',profileUi[0]);
+  const paperSelect=document.getElementById('paper-size');if(paperSelect)paperSelect.setAttribute('aria-label',profileUi[2]);
   const locale=document.querySelector('#date-format option[value="locale"]');if(locale)locale.textContent=v05ProfileLanguageName(currentUiLanguage);
 }
 const v05SetUiLanguage=setUiLanguage;
@@ -193,21 +193,24 @@ function v05RenderRecoveryStatus(){
   const host=document.getElementById('v05-recovery-bar');if(!host)return;
   const draft=safeV04StorageGet(V05_AUTOSAVE_KEY);let saved='';try{saved=draft?JSON.parse(draft).draftSavedAt||'':'';}catch(_){saved='';}
   const when=saved?formatV04DateFor(currentUiLanguage,new Date(saved))+' '+new Intl.DateTimeFormat(localeV04For(currentUiLanguage),{hour:'2-digit',minute:'2-digit'}).format(new Date(saved)):'';
-  host.innerHTML=saved?`<span class="status">${escapeV04(v05Terms()[6])}</span><span class="muted v05-ltr">${escapeV04(when)}</span><button type="button" onclick="restoreV05Draft()" aria-label="${escapeV04(v05Terms()[2])}">↺</button><button type="button" onclick="clearV05Draft()" aria-label="${escapeV04(v05Terms()[2])}">×</button>`:'';
+  const ui=getUiText(),basic=getUiBasic();
+  host.innerHTML=saved?`<time class="muted v05-ltr" datetime="${escapeV04(saved)}">${escapeV04(when)}</time><button type="button" onclick="restoreV05Draft()">${escapeV04(ui[11])}</button><button type="button" onclick="clearV05Draft()">${escapeV04(basic.delete)}</button>`:'';
 }
 function saveV05Draft(){
   try{const data=v05DraftData();if(safeV04StorageSet(V05_AUTOSAVE_KEY,JSON.stringify(data))){v05LastDraftAt=data.draftSavedAt;v05RenderRecoveryStatus();}}
-  catch(_){v05ShowRuntimeNotice(v05Text('임시저장에 실패했습니다. 파일 저장으로 현재 작업을 보관하십시오.','Draft save failed. Save a session file to preserve current work.'));}
+  catch(_){v05ShowRuntimeNotice(getFullUiText().saveError);}
 }
 function scheduleV05Draft(){clearTimeout(v05DraftTimer);v05DraftTimer=setTimeout(saveV05Draft,650);}
-function restoreV05Draft(){try{const raw=safeV04StorageGet(V05_AUTOSAVE_KEY);if(!raw)return;restoreSession(JSON.parse(raw));v05RenderRecoveryStatus();}catch(_){v05ShowRuntimeNotice(v05Text('임시본을 복원할 수 없습니다. 파일 저장본을 사용하십시오.','The draft cannot be restored. Use a saved session file.'));}}
+function restoreV05Draft(){try{const raw=safeV04StorageGet(V05_AUTOSAVE_KEY);if(!raw)return;restoreSession(JSON.parse(raw));v05RenderRecoveryStatus();}catch(_){v05ShowRuntimeNotice(getFullUiText().sessionReadError);}}
 function clearV05Draft(){try{localStorage.removeItem(V05_AUTOSAVE_KEY);}catch(_){}v05RenderRecoveryStatus();}
 function v05ShowRuntimeNotice(message){const box=document.getElementById('v05-runtime-notice');if(box){box.textContent=message;box.hidden=false;}}
-function v05RuntimeRecovery(){try{saveV05Draft();}catch(_){}v05ShowRuntimeNotice(v05Text('일시적인 오류가 발생했습니다. 입력값은 기기에 보관을 시도했습니다. 새로고침 후 임시본 또는 세션 파일로 복원하십시오.','A temporary error occurred. The app attempted to preserve input on this device. Refresh and restore the draft or a session file.'));}
+function v05RuntimeRecovery(){try{saveV05Draft();}catch(_){}v05ShowRuntimeNotice(getFullUiText().saveError);}
 
 function v05TraceHTML(documentLanguage=currentUiLanguage){
-  const p=v05Profile(),now=new Date(),unit=v04UnitSystem==='us'?'US customary + SI':'SI',input=v05InputUnits==='us'?'ft / ft³ / CFM':'m / m³ / m³/h';
-  return `<div class="v05-print-trace"><div><b>Tool</b><span class="v05-ltr">${V05_VERSION}</span></div><div><b>Legal profile</b>${escapeV04(v05ProfileDisplayName(v04Jurisdiction,documentLanguage))} <span class="v05-ltr">v${escapeV04(p.profileVersion||'—')}</span></div><div><b>Approval</b>${escapeV04(v05ApprovalText(p))}</div><div><b>Review baseline</b><span class="v05-ltr">${escapeV04(p.reviewedAt||'Unverified')}</span></div><div><b>UI language</b>${escapeV04(v05ProfileLanguageName(currentUiLanguage))}</div><div><b>Document language</b>${escapeV04(v05ProfileLanguageName(documentLanguage))}</div><div><b>Units</b><span class="v05-ltr">${unit}; input ${input}</span></div><div><b>Generated</b><time class="v05-ltr">${escapeV04(now.toISOString().replace('T',' ').slice(0,19)+' UTC')}</time></div></div>`;
+  const p=v05Profile(),now=new Date(),terms=v04Terms(documentLanguage),profileUi=V04_UI[documentLanguage]||V04_UI.en;
+  const dateLabel=PRINT_I18N[documentLanguage]?.l?.date||terms[6];
+  const unit=v04UnitSystem==='us'?'US + SI':'SI',input=v05InputUnits==='us'?'ft · ft³ · CFM':'m · m³ · m³/h';
+  return `<div class="v05-print-trace"><div><b>${V05_VERSION}</b><span class="v05-ltr">v${escapeV04(p.profileVersion||'—')} · ${escapeV04(p.reviewedAt||'—')}</span></div><div><b>${escapeV04(profileUi[0])}</b>${escapeV04(v05ProfileDisplayName(v04Jurisdiction,documentLanguage))}</div><div><b>${escapeV04(terms[0])}</b><span class="v05-ltr">${unit} · ${input}</span></div><div><b>${escapeV04(dateLabel)}</b><time class="v05-ltr">${escapeV04(v05FormatDate(now,documentLanguage))}</time></div></div>`;
 }
 function v05AddTrace(container){
   if(!container)return;
@@ -219,24 +222,25 @@ function v05AddTrace(container){
   container.insertAdjacentHTML('afterbegin',v05TraceHTML(container.dataset.language||currentUiLanguage));
 }
 const v05RenderReport=renderReport;
-renderReport=function(){v05RenderReport();v05AddTrace(document.querySelector('.report'));};
+function v05TraceTranslatedReports(){
+  document.querySelectorAll('.translated-report,.korean-supplement-report').forEach(section=>{
+    const code=section.dataset.language||currentUiLanguage;
+    section.lang=localeV04For(code);section.dir=['ar','fa','ur'].includes(code)?'rtl':'ltr';v05AddTrace(section);
+  });
+}
+renderReport=function(){v05RenderReport();v05AddTrace(document.querySelector('.report'));v05TraceTranslatedReports();};
 const v05RenderTranslatedReports=renderTranslatedReports;
-renderTranslatedReports=function(){v05RenderTranslatedReports();document.querySelectorAll('.translated-report,.korean-supplement-report').forEach(section=>{const code=section.dataset.language||currentUiLanguage;section.lang=localeV04For(code);section.dir=['ar','fa','ur'].includes(code)?'rtl':'ltr';v05AddTrace(section);});};
+renderTranslatedReports=function(){v05RenderTranslatedReports();v05TraceTranslatedReports();};
 const v05PrintReport=printReport;
 printReport=function(){renderReport();renderTranslatedReports();v05PrintReport();};
 const v05ShowV04Validation=showV04Validation;
-showV04Validation=function(items){
-  v05ShowV04Validation(items);
-  if(!items?.length)return;
-  const box=document.getElementById('validation-summary');if(!box)return;
-  box.insertAdjacentHTML('beforeend',`<p class="hint"><b>0+ · ${escapeV04(v05Terms()[0])}</b></p>`);
-};
+showV04Validation=function(items){v05ShowV04Validation(items);};
 
 document.addEventListener('DOMContentLoaded',()=>{
   const profile=document.querySelector('.global-profile');
-  if(profile&&!document.getElementById('input-unit-system')){const t=v05Terms();profile.insertAdjacentHTML('beforeend',`<div class="field"><label for="input-unit-system">${escapeV04(t[0])}</label><select id="input-unit-system" onchange="setV05InputUnits(this.value,false)"><option value="si">SI · m / m³ / m³/h</option><option value="us">US · ft / ft³ / CFM</option></select><small id="input-unit-note" class="hint"></small></div><div class="field"><label for="date-format">${escapeV04(t[6])}</label><select id="date-format" onchange="setV05DateFormat(this.value,false)"><option value="locale">${escapeV04(v05ProfileLanguageName(currentUiLanguage))}</option><option value="ymd">YYYY.MM.DD</option><option value="dmy">DD/MM/YYYY</option><option value="mdy">MM/DD/YYYY</option></select><small id="date-format-note" class="hint"></small></div>`);}
+  if(profile&&!document.getElementById('input-unit-system')){const t=v05Terms(),dateText=`${PRINT_I18N[currentUiLanguage]?.l?.date||t[6]} · YYYY/MM/DD`;profile.insertAdjacentHTML('beforeend',`<div class="field"><label for="input-unit-system">${escapeV04(t[0])}</label><select id="input-unit-system" aria-label="${escapeV04(t[0])}" onchange="setV05InputUnits(this.value,false)"><option value="si">SI · m / m³ / m³/h</option><option value="us">US · ft / ft³ / CFM</option></select><small id="input-unit-note" class="hint"></small></div><div class="field"><label for="date-format">${escapeV04(dateText)}</label><select id="date-format" aria-label="${escapeV04(dateText)}" onchange="setV05DateFormat(this.value,false)"><option value="locale">${escapeV04(v05ProfileLanguageName(currentUiLanguage))}</option><option value="ymd">YYYY.MM.DD</option><option value="dmy">DD/MM/YYYY</option><option value="mdy">MM/DD/YYYY</option></select><small id="date-format-note" class="hint"></small></div>`);}
   const session=document.querySelector('.session-bar');if(session&&!document.getElementById('v05-recovery-bar'))session.insertAdjacentHTML('beforebegin',`<div id="v05-recovery-bar" class="v05-recovery-bar no-print" aria-live="polite"></div><div id="v05-runtime-notice" class="v05-runtime-notice no-print" role="alert" hidden></div>`);
-  v05ProfileSelect();v05RenderProfileGovernance();v05PrepareNumericInputs();const defaultPref=v05ProfilePreferences();setV05InputUnits(defaultPref.inputUnit,true);setV05DateFormat(defaultPref.dateFormat,true);v05RenderRecoveryStatus();
+  v05ProfileSelect();v05RefreshProfileOptions();v05RefreshOperationalLabels();v05RenderProfileGovernance();v05PrepareNumericInputs();const defaultPref=v05ProfilePreferences();setV05InputUnits(defaultPref.inputUnit,true);setV05DateFormat(defaultPref.dateFormat,true);v05RenderRecoveryStatus();
   document.addEventListener('change',event=>{if(event.target?.matches?.('input[data-v05-numeric="true"],input[type="number"]'))v05NormalizeNumericInput(event.target);scheduleV05Draft();},true);
   document.addEventListener('input',event=>{if(event.target?.matches?.('input,select,textarea'))scheduleV05Draft();},true);
   window.addEventListener('error',v05RuntimeRecovery);window.addEventListener('unhandledrejection',v05RuntimeRecovery);

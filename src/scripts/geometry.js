@@ -153,8 +153,8 @@ function zonePolyFieldsHTML(z){
   const rows = z.polyPoints.map((p,idx)=>`
     <div class="poly-row">
       <span>${idx+1}</span>
-      <input type="number" step="0.01" placeholder="x (m)" value="${p.x!==undefined?p.x:''}" onchange="updateZonePoly(${z.id},${idx},'x',this.value)">
-      <input type="number" step="0.01" placeholder="y (m)" value="${p.y!==undefined?p.y:''}" onchange="updateZonePoly(${z.id},${idx},'y',this.value)">
+      <input id="zone-${z.id}-point-${idx}-x" aria-label="x ${idx+1}" type="number" step="0.01" placeholder="x (m)" value="${p.x!==undefined?p.x:''}" onchange="updateZonePoly(${z.id},${idx},'x',this.value)">
+      <input id="zone-${z.id}-point-${idx}-y" aria-label="y ${idx+1}" type="number" step="0.01" placeholder="y (m)" value="${p.y!==undefined?p.y:''}" onchange="updateZonePoly(${z.id},${idx},'y',this.value)">
     </div>`).join('');
   const area = shoelaceArea(z.polyPoints);
   const foreign=currentUiLanguage!=='ko';
@@ -175,8 +175,8 @@ function zonePolyFieldsHTML(z){
       <button type="button" class="btn small ghost" onclick="resetZonePoly(${z.id})">${foreign?basic.reset:'초기화'}</button>
     </div>
     <div class="field">
-      <label>${foreign?(english?'Section height / depth':'H / D'):'단면 높이(깊이)'} <span class="opt">m</span></label>
-      <input type="number" step="0.01" min="0" value="${z.polyH||''}" onchange="updateZoneField(${z.id},'polyH',this.value)">
+      <label for="zone-${z.id}-poly-height">${foreign?(english?'Section height / depth':'H / D'):'단면 높이(깊이)'} <span class="opt">m</span></label>
+      <input id="zone-${z.id}-poly-height" aria-label="${escapeV04(foreign?(english?'Section height / depth':'H / D'):'단면 높이(깊이)')}" type="number" step="0.01" min="0" value="${z.polyH||''}" onchange="updateZoneField(${z.id},'polyH',this.value)">
     </div>
     <div class="hint">${foreign?(english?'Section area':'A'):'단면적'}: ${area.toFixed(3)} ㎡</div>
   `;
@@ -194,8 +194,8 @@ function zoneCardHTML(z){
     ? zonePolyFieldsHTML(z)
     : `<div class="grid cols-3">` + info.fields.map(f=>`
         <div class="field">
-          <label>${f.label}</label>
-          <input type="number" step="0.01" min="0" value="${(z.vals&&z.vals[f.key]!==undefined&&!isNaN(z.vals[f.key]))?z.vals[f.key]:''}" onchange="updateZoneField(${z.id},'${f.key}',this.value)">
+          <label for="zone-${z.id}-${f.key}">${f.label}</label>
+          <input id="zone-${z.id}-${f.key}" aria-label="${escapeV04(f.label)}" type="number" step="0.01" min="0" value="${(z.vals&&z.vals[f.key]!==undefined&&!isNaN(z.vals[f.key]))?z.vals[f.key]:''}" onchange="updateZoneField(${z.id},'${f.key}',this.value)">
         </div>`).join('') + `</div>`;
   const shapeOptions = Object.entries(shapes).map(([key,inf])=>
     `<option value="${key}" ${z.shape===key?'selected':''}>${inf.label}</option>`).join('');
@@ -203,11 +203,11 @@ function zoneCardHTML(z){
   return `
     <div class="zone-card">
       <div class="zone-card-head">
-        <input type="text" class="zone-name" placeholder="${foreign?(basic.zone+' ('+basic.optional+')'):'구역명(선택, 예: 본체)'}" value="${escapeV04(z.name||'')}" onchange="updateZoneField(${z.id},'name',this.value)">
-        <select onchange="updateZoneField(${z.id},'shape',this.value)">${shapeOptions}</select>
+        <input id="zone-${z.id}-name" aria-label="${escapeV04(foreign?basic.zone:'구역명')}" type="text" class="zone-name" placeholder="${foreign?(basic.zone+' ('+basic.optional+')'):'구역명(선택, 예: 본체)'}" value="${escapeV04(z.name||'')}" onchange="updateZoneField(${z.id},'name',this.value)">
+        <select id="zone-${z.id}-shape" aria-label="${escapeV04(foreign?basic.zone:'구역')}" onchange="updateZoneField(${z.id},'shape',this.value)">${shapeOptions}</select>
         <div class="zone-sign">
-          <button type="button" class="${z.sign!==-1?'active':''}" onclick="updateZoneField(${z.id},'sign',1)">+ ${foreign?basic.add:'합산'}</button>
-          <button type="button" class="${z.sign===-1?'active':''}" onclick="updateZoneField(${z.id},'sign',-1)">− ${foreign?basic.subtract:'차감'}</button>
+          <button type="button" aria-pressed="${z.sign!==-1?'true':'false'}" class="${z.sign!==-1?'active':''}" onclick="updateZoneField(${z.id},'sign',1)">+ ${foreign?basic.add:'합산'}</button>
+          <button type="button" aria-pressed="${z.sign===-1?'true':'false'}" class="${z.sign===-1?'active':''}" onclick="updateZoneField(${z.id},'sign',-1)">− ${foreign?basic.subtract:'차감'}</button>
         </div>
         <button type="button" class="btn small danger" onclick="removeZone(${z.id})">${foreign?basic.delete:'삭제'}</button>
       </div>

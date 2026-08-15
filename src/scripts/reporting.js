@@ -19,7 +19,7 @@ function renderReport(){
     : `희석환기식 · 안전계수 K=${formatCriterionNumber(document.getElementById(r.mode==='C'?'c-k':'b-k')?.value || 1)}`;
 
   document.getElementById('print-title').innerHTML =
-    `<span class="pt-title-wrap"><small class="pt-kicker">PRE-WORK VENTILATION REVIEW</small><strong>밀폐공간 환기량 사전검토 결과서</strong></span>
+    `<span class="pt-title-wrap"><small class="pt-kicker">작업 전 환기 검토</small><strong>밀폐공간 환기량 사전검토 결과서</strong></span>
      <span class="pt-sub"><b>사전검토용 · 현장 측정 필수</b>${spaceName ? `<span>${escapeReportText(spaceName)}</span>` : ''}<span>작성일 ${dateStr}</span></span>`;
 
   let modeSpecific = '';
@@ -163,7 +163,7 @@ function buildReferenceHTML(mode){
 
 /* ------------------------------------------------------------
    다국어 인쇄 보조 페이지
-   - 한국어 결과서가 법적·업무상 원본이며 번역 페이지는 이해 보조용
+   - 현재 화면 언어를 기본 결과서로 사용하고 선택 언어마다 별도 문서를 생성
    - 선택한 언어마다 인쇄 시 새 페이지를 추가
    ------------------------------------------------------------ */
 const PRINT_I18N = {
@@ -342,8 +342,8 @@ function makeSupplementalPrintPack(code){
   return {
     name:meta ? meta[2] : code,
     title:u[0],
-    subtitle:u[13] || en.subtitle,
-    disclaimer:u[14] || en.disclaimer,
+    subtitle:'',
+    disclaimer:u[4],
     h:[u[6][1],u[6][3],u[6][4],u[12] || en.h[3],u[3]],
     l:labels,
     modes:{
@@ -367,6 +367,8 @@ function makeSupplementalPrintPack(code){
 }
 PRINT_LANG_CODES.forEach(code=>{
   if(!PRINT_I18N[code]) PRINT_I18N[code]=makeSupplementalPrintPack(code);
+  PRINT_I18N[code].subtitle='';
+  PRINT_I18N[code].disclaimer=getUiText(code)[4];
 });
 
 function getSelectedPrintLanguages(){
@@ -376,20 +378,6 @@ function escapeReportText(value){
   return String(value===undefined || value===null ? '' : value)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-const PRINT_LANGUAGE_KO = Object.fromEntries(
-  UI_LANGUAGE_META.filter(x=>x[0]!=='ko').map(([code,ko])=>[code,ko])
-);
-const PRINT_SIGN_LABELS = {
-  en:{role:'Role',name:'Name',sign:'Signature',date:'Date'},
-  zh:{role:'区分',name:'姓名',sign:'签名',date:'日期'},
-  ja:{role:'区分',name:'氏名',sign:'署名',date:'日付'},
-  vi:{role:'Vai trò',name:'Họ tên',sign:'Chữ ký',date:'Ngày'},
-  th:{role:'หน้าที่',name:'ชื่อ',sign:'ลายเซ็น',date:'วันที่'},
-  id:{role:'Peran',name:'Nama',sign:'Tanda tangan',date:'Tanggal'},
-  mn:{role:'Үүрэг',name:'Нэр',sign:'Гарын үсэг',date:'Огноо'},
-  my:{role:'တာဝန်',name:'အမည်',sign:'လက်မှတ်',date:'ရက်စွဲ'},
-  km:{role:'តួនាទី',name:'ឈ្មោះ',sign:'ហត្ថលេខា',date:'កាលបរិច្ឆេទ'}
-};
 const PRINT_CRITERIA_I18N = {
   en:{label:'Applied criterion',volume:(m,a)=>`Initial ${m}× · During work ${a} ACH`,dilution:k=>`Dilution equation · Safety factor K=${k}`},
   zh:{label:'适用通风标准',volume:(m,a)=>`初始送风 ${m} 倍 · 作业中 ${a} 次/h`,dilution:k=>`稀释通风公式 · 安全系数 K=${k}`},
@@ -429,6 +417,9 @@ function renderTranslatedReports(){
     const t = PRINT_I18N[code];
     if(!t) return '';
     const full = getFullUiText(code);
+    const languageLabel=typeof v05BilingualLanguageName==='function'
+      ? v05BilingualLanguageName(code,currentUiLanguage)
+      : (UI_LANGUAGE_META.find(item=>item[0]===code)?.[2]||code);
     const ci = PRINT_CRITERIA_I18N[code] || PRINT_CRITERIA_I18N.en;
     const criterionText = r.mode==='A' ? ci.volume(multiplier,ach) : ci.dilution(safetyFactor);
     const fanRows = state.fans.map(f=>{
@@ -443,8 +434,8 @@ function renderTranslatedReports(){
     }
     const checks = t.checks.map(c=>`<div class="translated-check"><b>□ ${c[0]}</b>${c[1]}</div>`).join('');
     const translatedOk = requiredQ>0 && totalSupply>=requiredQ;
-    return `<section class="translated-report" lang="${code}" data-language="${code}">
-      <div class="translated-title"><span class="translated-title-main"><small>PRE-WORK VENTILATION REVIEW</small>${t.title}</span><small><b>${PRINT_LANGUAGE_KO[code]||code} / ${t.name}</b><br>${appVersionText(t.subtitle)}</small></div>
+    return `<section class="translated-report" lang="${escapeReportText(localeV04For(code))}" data-language="${code}">
+      <div class="translated-title"><span class="translated-title-main">${t.title}</span><small><b>${escapeReportText(languageLabel)}</b><br>${APP_VERSION}</small></div>
       <div class="translated-disclaimer">${t.disclaimer}</div>
       <h3><span>1</span>${t.h[0]}</h3>
       <div class="translated-overview-grid">
@@ -468,7 +459,7 @@ function renderTranslatedReports(){
       <table class="translated-equipment-table"><thead><tr><th>${t.l.equipment}</th><th>${t.l.rated}</th><th>${t.l.basis}</th><th>${t.l.explosion}</th><th>${t.l.applied}</th><th>${t.l.qty}</th></tr></thead><tbody>${fanRows}</tbody></table>
       <h3><span>4</span>${t.h[3]}</h3><div class="translated-checks">${checks}</div>
       <h3><span>5</span>${t.h[4]}</h3><div class="note danger">${t.safety}</div>
-      <div class="translated-document-footer"><span>${APP_VERSION}</span><span>${appVersionText(t.subtitle)}</span></div>
+      <div class="translated-document-footer"><span>${APP_VERSION}</span><span>${escapeReportText(languageLabel)}</span></div>
     </section>`;
   }).join('');
 }

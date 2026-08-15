@@ -57,7 +57,7 @@ function downloadOrSave(filename, content, mime){
 }
 function exportFans(){
   const data = JSON.stringify(state.fans, null, 2);
-  downloadOrSave('송배풍기_목록.json', data, 'application/json');
+  downloadOrSave('ventcalc_blowers.json', data, 'application/json');
 }
 function importFans(e){
   const file = e.target.files[0];

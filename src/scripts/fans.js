@@ -67,9 +67,14 @@ function renderFanTable(){
     const needQty = effective>0 ? Math.ceil(requiredQ/effective) : 0;
     const supply = effective * f.qty;
     totalSupply += supply;
+    const idPrefix=`fan-${f.id}`;
+    const correctionLabel=foreign?detail.correctionInput:'보정값';
+    const basisHint=f.flowMethod==='estimate'
+      ? (foreign?detail.efficiency:'효율')
+      : (foreign?(f.flowMethod==='measured'?detail.measured:detail.operatingPoint):(f.flowMethod==='measured'?'실측':'운전점'));
     const basisInput = f.flowMethod==='estimate'
-      ? `<div class="fan-basis-wrap"><input class="fan-basis-input" type="number" value="${f.eff}" min="0" max="100" onchange="updateFan(${f.id},'eff',this.value)"><div class="hint">${english?detail.efficiency:''} %</div></div>`
-      : `<div class="fan-basis-wrap"><input class="fan-basis-input" type="number" value="${f.appliedFlow||0}" min="0" step="0.1" onchange="updateFan(${f.id},'appliedFlow',this.value)"><div class="hint">${english?(f.flowMethod==='measured'?detail.measured:detail.operatingPoint):''} ㎥/h</div></div>`;
+      ? `<div class="fan-basis-wrap"><input id="${idPrefix}-basis" class="fan-basis-input" aria-label="${escapeV04(correctionLabel)} · ${escapeV04(basisHint)}" type="number" value="${f.eff}" min="0" max="100" onchange="updateFan(${f.id},'eff',this.value)"><div class="hint">${escapeV04(basisHint)} · %</div></div>`
+      : `<div class="fan-basis-wrap"><input id="${idPrefix}-basis" class="fan-basis-input" aria-label="${escapeV04(correctionLabel)} · ${escapeV04(basisHint)}" type="number" value="${f.appliedFlow||0}" min="0" step="0.1" onchange="updateFan(${f.id},'appliedFlow',this.value)"><div class="hint">${escapeV04(basisHint)} · ㎥/h</div></div>`;
     const diameterM = (parseFloat(f.ductDiameter)||0)/1000;
     const ductVelocity = diameterM>0 && effective>0
       ? effective/3600/(Math.PI*Math.pow(diameterM,2)/4)
@@ -77,19 +82,19 @@ function renderFanTable(){
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td data-label="${foreign?labels.equipment:'장비명'}"><input type="text" value="${escapeV04(f.name)}" onchange="updateFan(${f.id},'name',this.value)" placeholder="${foreign?labels.equipment:'예: 이동식 송풍기 #1'}"></td>
-      <td data-label="${foreign?labels.rated+' (㎥/h)':'정격풍량(㎥/h)'}"><input type="number" value="${f.rated}" min="0" onchange="updateFan(${f.id},'rated',this.value)"></td>
-      <td data-label="${foreign?labels.basis:'풍량 적용방식'}"><select onchange="updateFan(${f.id},'flowMethod',this.value)">
+      <td data-label="${foreign?labels.equipment:'장비명'}"><input id="${idPrefix}-name" aria-label="${escapeV04(foreign?labels.equipment:'장비명')}" type="text" value="${escapeV04(f.name)}" onchange="updateFan(${f.id},'name',this.value)" placeholder="${foreign?labels.equipment:'예: 이동식 송풍기 #1'}"></td>
+      <td data-label="${foreign?labels.rated+' (㎥/h)':'정격풍량(㎥/h)'}"><input id="${idPrefix}-rated" aria-label="${escapeV04(foreign?labels.rated:'정격풍량')}" type="number" value="${f.rated}" min="0" onchange="updateFan(${f.id},'rated',this.value)"></td>
+      <td class="fan-flow-method-cell" data-label="${foreign?labels.basis:'풍량 적용방식'}"><select id="${idPrefix}-method" aria-label="${escapeV04(foreign?labels.basis:'풍량 적용방식')}" onchange="updateFan(${f.id},'flowMethod',this.value)">
         <option value="estimate" ${f.flowMethod==='estimate'?'selected':''}>${methods.estimate || detail.fanMethods.estimate}</option>
         <option value="manufacturer" ${f.flowMethod==='manufacturer'?'selected':''}>${methods.manufacturer || detail.fanMethods.manufacturer}</option>
         <option value="measured" ${f.flowMethod==='measured'?'selected':''}>${methods.measured || detail.fanMethods.measured}</option>
       </select></td>
-      <td data-label="${foreign?(english?'Correction / input':'% / Q'):'보정값'}">${basisInput}</td>
-      <td data-label="${foreign?labels.explosion:'방폭'}"><input type="checkbox" ${f.explosion?'checked':''} onchange="updateFan(${f.id},'explosion',this.checked)"></td>
-      <td data-label="${foreign?labels.applied+' (㎥/h)':'적용풍량(㎥/h)'}"><div class="fan-output-wrap">${effective.toFixed(1)}<div class="hint" style="margin-top:2px;">${foreign?labels.required:'필요'} ${needQty}</div></div></td>
-      <td data-label="${foreign?labels.qty:'계획 대수'}"><input type="number" value="${f.qty}" min="0" onchange="updateFan(${f.id},'qty',this.value)"></td>
+      <td class="fan-basis-cell" data-label="${escapeV04(correctionLabel)}">${basisInput}</td>
+      <td data-label="${foreign?labels.explosion:'방폭'}"><input id="${idPrefix}-explosion" aria-label="${escapeV04(foreign?labels.explosion:'방폭')}" type="checkbox" ${f.explosion?'checked':''} onchange="updateFan(${f.id},'explosion',this.checked)"></td>
+      <td data-label="${foreign?labels.applied+' (㎥/h)':'적용풍량(㎥/h)'}"><div class="fan-output-wrap">${effective.toFixed(1)}<div class="hint" style="margin-top:2px;">Nmin = ${needQty}</div></div></td>
+      <td data-label="${foreign?labels.qty:'계획 대수'}"><input id="${idPrefix}-qty" aria-label="${escapeV04(foreign?labels.qty:'계획 대수')}" type="number" value="${f.qty}" min="0" onchange="updateFan(${f.id},'qty',this.value)"></td>
       <td data-label="${foreign?labels.supply+' (㎥/h)':'공급풍량(㎥/h)'}">${supply.toFixed(1)}</td>
-      <td class="fan-delete-cell"><button class="btn small danger fan-delete-btn" onclick="removeFan(${f.id})">${foreign?basic.delete:'삭제'}</button></td>
+      <td class="fan-delete-cell"><button type="button" class="btn small danger fan-delete-btn" onclick="removeFan(${f.id})">${foreign?basic.delete:'삭제'}</button></td>
     `;
     tbody.appendChild(tr);
     const advancedTr = document.createElement('tr');
@@ -98,11 +103,11 @@ function renderFanTable(){
       <details class="fan-advanced" ${f.advancedOpen?'open':''} ontoggle="setFanAdvancedOpen(${f.id},this.open)">
         <summary>${foreign?detail.optionalDuct:'선택 입력 · 덕트·정압 조건'} ${foreign?'('+(f.flowMethod==='estimate'?detail.currentEfficiency:detail.recordBasis)+')':(f.flowMethod==='estimate'?'(계산에는 현재 유효율 적용)':'(풍량 근거 기록)')}</summary>
         <div class="fan-advanced-grid">
-          <div class="field"><label>${foreign?detail.ductDiameter:'덕트 지름'} (mm)</label><input type="number" min="0" value="${f.ductDiameter||0}" onchange="updateFan(${f.id},'ductDiameter',this.value)"></div>
-          <div class="field"><label>${foreign?detail.ductLength:'덕트 길이'} (m)</label><input type="number" min="0" step="0.1" value="${f.ductLength||0}" onchange="updateFan(${f.id},'ductLength',this.value)"></div>
-          <div class="field"><label>${foreign?detail.bendCount:'굴곡 개수'}</label><input type="number" min="0" step="1" value="${f.bendCount||0}" onchange="updateFan(${f.id},'bendCount',this.value)"></div>
-          <div class="field"><label>${foreign?detail.staticPressure:'운전 정압'} (Pa)</label><input type="number" min="0" step="1" value="${f.staticPressure||0}" onchange="updateFan(${f.id},'staticPressure',this.value)"></div>
-          <div class="field fan-advanced-note"><label>${foreign?detail.performanceNote:'성능자료·실측 메모'}</label><input type="text" value="${escapeV04(f.advancedNote||'')}" onchange="updateFan(${f.id},'advancedNote',this.value)" placeholder="${foreign?'—':'예: 제조사 곡선 250Pa / 열선풍속계 실측'}"></div>
+          <div class="field"><label for="${idPrefix}-diameter">${foreign?detail.ductDiameter:'덕트 지름'} (mm)</label><input id="${idPrefix}-diameter" aria-label="${escapeV04(foreign?detail.ductDiameter:'덕트 지름')}" type="number" min="0" value="${f.ductDiameter||0}" onchange="updateFan(${f.id},'ductDiameter',this.value)"></div>
+          <div class="field"><label for="${idPrefix}-length">${foreign?detail.ductLength:'덕트 길이'} (m)</label><input id="${idPrefix}-length" aria-label="${escapeV04(foreign?detail.ductLength:'덕트 길이')}" type="number" min="0" step="0.1" value="${f.ductLength||0}" onchange="updateFan(${f.id},'ductLength',this.value)"></div>
+          <div class="field"><label for="${idPrefix}-bends">${foreign?detail.bendCount:'굴곡 개수'}</label><input id="${idPrefix}-bends" aria-label="${escapeV04(foreign?detail.bendCount:'굴곡 개수')}" type="number" min="0" step="1" value="${f.bendCount||0}" onchange="updateFan(${f.id},'bendCount',this.value)"></div>
+          <div class="field"><label for="${idPrefix}-pressure">${foreign?detail.staticPressure:'운전 정압'} (Pa)</label><input id="${idPrefix}-pressure" aria-label="${escapeV04(foreign?detail.staticPressure:'운전 정압')}" type="number" min="0" step="1" value="${f.staticPressure||0}" onchange="updateFan(${f.id},'staticPressure',this.value)"></div>
+          <div class="field fan-advanced-note"><label for="${idPrefix}-note">${foreign?detail.performanceNote:'성능자료·실측 메모'}</label><input id="${idPrefix}-note" aria-label="${escapeV04(foreign?detail.performanceNote:'성능자료·실측 메모')}" type="text" value="${escapeV04(f.advancedNote||'')}" onchange="updateFan(${f.id},'advancedNote',this.value)" placeholder="${foreign?'—':'예: 제조사 곡선 250Pa / 열선풍속계 실측'}"></div>
         </div>
         <div class="hint">${english?(ductVelocity>0?`Average duct velocity from applied airflow: <b>${ductVelocity.toFixed(2)} m/s</b>. `:''):(foreign?(ductVelocity>0?`v = <b>${ductVelocity.toFixed(2)} m/s</b>`:''):(ductVelocity>0?`적용풍량 기준 덕트 평균 유속 약 <b>${ductVelocity.toFixed(2)} m/s</b>. `:''))}${english?'Duct conditions alone do not determine actual airflow. Use the manufacturer operating point or a field measurement.':(foreign?'':'덕트 조건만으로 실제 풍량을 확정할 수 없습니다. 제조사 성능곡선의 운전점 풍량 또는 현장 실측값을 적용하십시오.')}</div>
       </details>

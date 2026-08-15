@@ -688,9 +688,9 @@
     .session-actions{flex-direction:column;}
     .session-actions .btn{width:100%;}
 
-    /* 스텝퍼: 가로 스크롤 방식으로 전환 (PC는 균등폭 탭) */
-    .stepper{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;margin-bottom:14px;}
-    .stepper li{flex:0 0 auto;min-width:76px;font-size:11px;padding:9px 10px;white-space:nowrap;}
+    /* 휴대폰에서는 여섯 단계를 모두 보이는 3×2 그리드로 고정한다. */
+    .stepper{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));overflow:visible;flex-wrap:initial;margin-bottom:14px;}
+    .stepper li{width:auto;min-width:0;font-size:11px;padding:9px 6px;white-space:normal;overflow-wrap:anywhere;}
 
     .card{padding:16px 14px;margin-bottom:12px;}
     .card h2{font-size:15px;}
@@ -755,6 +755,8 @@
     table.responsive-table td .fan-basis-wrap,
     table.responsive-table td .fan-output-wrap{width:58%;max-width:58%;text-align:right;}
     table.responsive-table td .fan-basis-wrap input{max-width:100%;width:100%;}
+    table.responsive-table td.fan-flow-method-cell{align-items:stretch;flex-direction:column;text-align:left;}
+    table.responsive-table td.fan-flow-method-cell select{width:100%;max-width:100%;text-align:start;}
     table.responsive-table td.fan-delete-cell{justify-content:flex-end;padding-top:10px !important;}
     .fan-delete-btn{width:auto !important;min-width:76px;height:42px;padding:0 14px;}
     table.responsive-table tbody tr.fan-advanced-row{
@@ -950,8 +952,8 @@
       box-shadow:0 10px 28px rgba(6,59,89,.16);
     }
     header.app-header::before{
-      content:"VENTILATION PLANNING";
-      display:inline-flex;
+      content:"";
+      display:none;
       align-items:center;
       height:22px;
       margin-bottom:9px;
@@ -1461,10 +1463,10 @@
     .stepper{
       gap:5px;
       padding:5px;
-      overflow-x:auto;
+      overflow:visible;
       border-radius:14px;
     }
-    .stepper li{min-width:86px;min-height:40px;padding:8px 9px;}
+    .stepper li{min-width:0;min-height:40px;padding:8px 6px;}
     .stepper li.active{transform:none;}
     .card{padding:18px 14px;border-radius:15px;box-shadow:0 8px 22px rgba(35,72,96,.07);}
     .card h2{font-size:16px;}
@@ -2029,15 +2031,6 @@
       line-height:1.36;
     }
     .translated-check b{margin-bottom:3px;color:#164D67;font-size:8.6px;}
-    .translated-signature-table{table-layout:fixed;}
-    .report .translated-signature-table{font-size:8.2px;line-height:1.34;}
-    .report .translated-signature-table thead th{height:22px !important;padding:3px 4px !important;}
-    .report .translated-signature-table tbody tr{height:38px !important;}
-    .report .translated-signature-table tbody td{
-      height:38px !important;
-      padding:4px !important;
-      line-height:1.3;
-    }
     .translated-document-footer{
       display:flex;
       justify-content:space-between;
@@ -2144,6 +2137,10 @@ html{scroll-padding-top:12px;}
   /* Korean supplementary output is a native report, not a translated-card report. */
   .korean-supplement-report{margin:28px 0 0;padding:16px 0 0;border-top:3px double var(--navy);}
   .korean-supplement-report > .print-title{display:flex;}
+  @media(min-width:721px) and (max-width:980px){
+    .global-profile{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+    .global-profile .profile-note,.global-profile .profile-source{grid-column:1/-1;}
+  }
   @media(max-width:720px){
     .global-profile{grid-template-columns:1fr;}
     .global-profile .profile-note,.global-profile .profile-source{grid-column:1;}
@@ -2184,7 +2181,7 @@ html{scroll-padding-top:12px;}
 
 </head>
 <body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
+<a class="skip-link" href="#main-content">밀폐공간 환기량 산정</a>
 
 <header class="app-header">
   <h1>밀폐공간 환기량 산정 · 송배풍기 매칭 도구</h1>
@@ -2194,7 +2191,7 @@ html{scroll-padding-top:12px;}
       <span class="ui-language-label">🌐 화면 언어</span>
       <select id="ui-language" onchange="setUiLanguage(this.value)" aria-label="화면 언어 선택"></select>
     </label>
-    <span class="credit">Produced by H.S.H</span>
+    <span class="credit">H.S.H</span>
   </div>
 </header>
 <div class="warn-banner">
@@ -2820,8 +2817,55 @@ function getFullUiText(code=currentUiLanguage){
   return UI_FULL_I18N[code] || UI_FULL_I18N.en;
 }
 /* FULL_UI_I18N_END */
+const UI_SUPPLEMENTAL_HINT_I18N={
+  ko:'현재 화면 언어가 기본 결과서이며, 선택한 추가 언어마다 별도 1페이지가 추가됩니다.',
+  en:'The current UI language is the primary report; each selected supplementary language adds a separate page.',
+  zh:'当前界面语言为主报告语言；每选择一种附加语言，都会新增一页。',
+  zht:'目前介面語言為主要報告語言；每選擇一種附加語言，會新增一頁。',
+  ja:'現在の画面言語が基本結果書になります。選択した追加言語ごとに別の1ページが追加されます。',
+  vi:'Ngôn ngữ giao diện hiện tại là báo cáo chính; mỗi ngôn ngữ bổ sung được chọn sẽ thêm một trang riêng.',
+  th:'ภาษาหน้าจอปัจจุบันเป็นรายงานหลัก และแต่ละภาษาเพิ่มเติมที่เลือกจะเพิ่มอีกหนึ่งหน้าแยกต่างหาก',
+  id:'Bahasa antarmuka saat ini menjadi laporan utama; setiap bahasa tambahan yang dipilih menambah satu halaman terpisah.',
+  ms:'Bahasa antara muka semasa ialah laporan utama; setiap bahasa tambahan yang dipilih menambah satu halaman berasingan.',
+  hi:'वर्तमान इंटरफ़ेस भाषा मुख्य रिपोर्ट होगी; चुनी गई प्रत्येक अतिरिक्त भाषा के लिए एक अलग पृष्ठ जोड़ा जाएगा।',
+  bn:'বর্তমান ইন্টারফেসের ভাষাই প্রধান প্রতিবেদন; নির্বাচিত প্রতিটি অতিরিক্ত ভাষার জন্য আলাদা একটি পৃষ্ঠা যোগ হবে।',
+  fil:'Ang kasalukuyang wika ng interface ang pangunahing ulat; bawat napiling karagdagang wika ay nagdaragdag ng hiwalay na pahina.',
+  my:'လက်ရှိ မျက်နှာပြင်ဘာသာစကားသည် အဓိကအစီရင်ခံစာဖြစ်ပြီး ရွေးချယ်သည့် အပိုဘာသာစကားတစ်ခုစီအတွက် သီးခြားစာမျက်နှာတစ်မျက်နှာ ထပ်တိုးပါမည်။',
+  km:'ភាសាចំណុចប្រទាក់បច្ចុប្បន្នជារបាយការណ៍ចម្បង ហើយភាសាបន្ថែមនីមួយៗដែលបានជ្រើសនឹងបន្ថែមមួយទំព័រដាច់ដោយឡែក។',
+  mn:'Одоогийн дэлгэцийн хэл үндсэн тайлан болно. Сонгосон нэмэлт хэл бүр тусдаа нэг хуудас нэмнэ.',
+  es:'El idioma actual de la interfaz será el informe principal; cada idioma adicional seleccionado añadirá una página separada.',
+  pt:'O idioma atual da interface será o relatório principal; cada idioma adicional selecionado acrescentará uma página separada.',
+  ar:'لغة الواجهة الحالية هي لغة التقرير الرئيسي؛ وتضيف كل لغة إضافية محددة صفحة مستقلة.',
+  fa:'زبان فعلی رابط، زبان گزارش اصلی است؛ هر زبان تکمیلی انتخاب‌شده یک صفحه جداگانه اضافه می‌کند.',
+  ur:'موجودہ انٹرفیس زبان بنیادی رپورٹ ہوگی؛ منتخب کردہ ہر اضافی زبان کے لیے ایک الگ صفحہ شامل ہوگا۔',
+  ru:'Текущий язык интерфейса используется для основного отчета; каждый выбранный дополнительный язык добавляет отдельную страницу.',
+  uk:'Поточна мова інтерфейсу використовується для основного звіту; кожна вибрана додаткова мова додає окрему сторінку.',
+  pl:'Bieżący język interfejsu jest językiem raportu głównego; każdy wybrany język dodatkowy dodaje osobną stronę.',
+  tr:'Geçerli arayüz dili ana rapor dilidir; seçilen her ek dil ayrı bir sayfa ekler.',
+  de:'Die aktuelle UI-Sprache ist die Sprache des Hauptberichts; jede ausgewählte Zusatzsprache fügt eine eigene Seite hinzu.',
+  fr:'La langue actuelle de l’interface est celle du rapport principal ; chaque langue supplémentaire sélectionnée ajoute une page distincte.',
+  it:'La lingua corrente dell’interfaccia è quella del rapporto principale; ogni lingua aggiuntiva selezionata aggiunge una pagina separata.',
+  cs:'Aktuální jazyk rozhraní je jazykem hlavní zprávy; každý vybraný doplňkový jazyk přidá samostatnou stránku.',
+  ro:'Limba curentă a interfeței este limba raportului principal; fiecare limbă suplimentară selectată adaugă o pagină separată.',
+  hu:'A felület aktuális nyelve lesz a fő jelentés nyelve; minden kiválasztott kiegészítő nyelv külön oldalt ad hozzá.',
+  kk:'Ағымдағы интерфейс тілі негізгі есептің тілі болады; таңдалған әрбір қосымша тіл жеке бет қосады.',
+  uz:'Joriy interfeys tili asosiy hisobot tili bo‘ladi; tanlangan har bir qo‘shimcha til alohida sahifa qo‘shadi.'
+};
+const UI_COMPLETE_CORE_LANGS=new Set(['ko','en','zh','zht','ja','vi','th','id','es','pt','ru','de','fr','ar']);
 function getUiText(code=currentUiLanguage){
-  return UI_CORE[code] || UI_CORE[UI_FALLBACK_BY_CODE[code]] || UI_CORE.en;
+  const text=(UI_CORE[code] || UI_CORE[UI_FALLBACK_BY_CODE[code]] || UI_CORE.en).slice();
+  if(!UI_COMPLETE_CORE_LANGS.has(code)){
+    const basic=getUiBasic(code),full=getFullUiText(code);
+    text[1]=APP_VERSION;
+    text[9]=basic.zone;
+    text[10]='↓ JSON';
+    text[11]='↑ JSON';
+    text[12]=`${full.check1Title} · ${full.check2Title}`;
+    text[13]=`${text[2]} · PDF`;
+    text[15]='PDF';
+  }
+  text[14]=UI_SUPPLEMENTAL_HINT_I18N[code]||UI_SUPPLEMENTAL_HINT_I18N.en;
+  return text;
 }
 function uiMsg(ko,en){
   if(currentUiLanguage==='ko') return ko;
@@ -2867,12 +2911,18 @@ function setFieldUi(inputId, main, opt, hint, info, placeholder){
   if(!field) return;
   const label=field.querySelector(':scope > label');
   setDirectLabelText(label,main);
+  if(label)label.setAttribute('for',inputId);
+  input.setAttribute('aria-label',main);
   const optEl=label?.querySelector('.opt');
   if(optEl && opt!==undefined){rememberUiElement(optEl);optEl.textContent=opt;}
   const hintEl=field.querySelector(':scope > .hint');
   if(hintEl && hint!==undefined){rememberUiElement(hintEl);hintEl.textContent=hint;}
   const infoEl=field.querySelector(':scope > .info-box');
   if(infoEl && info!==undefined){rememberUiElement(infoEl);infoEl.textContent=info;}
+  const descriptions=[];
+  if(hintEl){if(!hintEl.id)hintEl.id=inputId+'-hint';descriptions.push(hintEl.id);}
+  if(infoEl){if(!infoEl.id)infoEl.id=inputId+'-info';descriptions.push(infoEl.id);}
+  if(descriptions.length)input.setAttribute('aria-describedby',descriptions.join(' '));
   if(placeholder!==undefined){
     if(input.dataset.uiOriginalPlaceholder===undefined) input.dataset.uiOriginalPlaceholder=input.placeholder||'';
     input.placeholder=placeholder;
@@ -2958,8 +3008,12 @@ function setUiLanguage(code){
   const t=getUiText(code);
   document.documentElement.lang=code;
   document.documentElement.dir=['ar','fa','ur'].includes(code)?'rtl':'ltr';
-  const ui=document.getElementById('ui-language'); if(ui) ui.value=code;
+  const ui=document.getElementById('ui-language');
+  if(ui){ui.value=code;ui.setAttribute('aria-label',t[2]);}
   const set=(selector,text)=>{const el=document.querySelector(selector);if(el)el.textContent=text;};
+  set('.skip-link',t[0]);
+  const stepper=document.getElementById('stepper');
+  if(stepper)stepper.setAttribute('aria-label',t[5].join(' · '));
   set('header.app-header h1',t[0]); set('header.app-header p',appVersionText(t[1]));
   document.title = `${t[0]} — ${APP_VERSION}`;
   set('.ui-language-label','🌐 '+t[2]); set('.warn-banner > b','⚠ '+t[3]);
@@ -2970,13 +3024,14 @@ function setUiLanguage(code){
   if(sessionOpt) sessionOpt.textContent=code==='ko'?'(세션 저장 파일명에 사용, 선택)':'('+getUiBasic(code).optional+')';
   set('.session-actions button',t[10]);
   const spaceInput=document.getElementById('space-name');
-  if(spaceInput) spaceInput.placeholder=code==='ko'?'예: 1호기 정화조 맨홀':'—';
+  if(spaceInput){spaceInput.placeholder=code==='ko'?'예: 1호기 정화조 맨홀':'—';spaceInput.setAttribute('aria-label',t[9]);}
   const profileRef=document.getElementById('profile-reference');
   const profileRefLabel=document.getElementById('profile-reference-label');
-  if(profileRefLabel)profileRefLabel.textContent=v04Terms(code)[2];
+  const profileUi=V04_UI[code]||V04_UI.en;
+  if(profileRefLabel)profileRefLabel.textContent=profileUi[1];
   const profileRefOpt=profileRefLabel?.parentElement?.querySelector('.opt');
   if(profileRefOpt)profileRefOpt.textContent=code==='ko'?'(선택)':'('+getUiBasic(code).optional+')';
-  if(profileRef)profileRef.placeholder=code==='ko'?'예: HSE-CS-01 Rev.4':'—';
+  if(profileRef){profileRef.placeholder=code==='ko'?'예: HSE-CS-01 Rev.4':'—';profileRef.setAttribute('aria-label',profileUi[1]);}
   const load=document.querySelector('.session-actions label.btn'); if(load){
     const input=load.querySelector('input'); load.textContent=t[11]+' '; if(input)load.appendChild(input);
   }
@@ -2993,6 +3048,21 @@ function setUiLanguage(code){
     }
   });
   applyOperationalUiText();
+  document.querySelectorAll('.field').forEach((field,index)=>{
+    const control=field.querySelector(':scope > input,:scope > select,:scope > textarea');
+    const label=field.querySelector(':scope > label');
+    if(!control||!label)return;
+    if(!control.id)control.id=`field-control-${index+1}`;
+    label.setAttribute('for',control.id);
+    control.setAttribute('aria-label',label.textContent.replace('ⓘ','').trim());
+  });
+  document.querySelectorAll('.info-toggle').forEach((btn,index)=>{
+    const box=btn.parentElement?.nextElementSibling;
+    const label=btn.parentElement?.textContent?.replace('ⓘ','').trim()||t[3];
+    btn.setAttribute('aria-label',label);
+    btn.setAttribute('aria-expanded',String(Boolean(box&&!box.hidden)));
+    if(box){if(!box.id)box.id=`field-info-${index+1}`;btn.setAttribute('aria-controls',box.id);}
+  });
   renderStepper();
   if(state.zones.length) renderZones();
   if(state.mode) renderStep3();
@@ -3052,7 +3122,12 @@ function toggleInfo(btn){
   let container = btn.parentElement; // <label> 또는 <p> 등 버튼을 감싸는 요소
   let box = container ? container.nextElementSibling : null;
   while(box && !box.classList.contains('info-box')) box = box.nextElementSibling;
-  if(box) box.hidden = !box.hidden;
+  if(box){
+    box.hidden = !box.hidden;
+    if(!box.id)box.id=`info-box-${Array.from(document.querySelectorAll('.info-box')).indexOf(box)+1}`;
+    btn.setAttribute('aria-controls',box.id);
+    btn.setAttribute('aria-expanded',String(!box.hidden));
+  }
 }
 
 /* ============================================================
@@ -3215,8 +3290,8 @@ function zonePolyFieldsHTML(z){
   const rows = z.polyPoints.map((p,idx)=>`
     <div class="poly-row">
       <span>${idx+1}</span>
-      <input type="number" step="0.01" placeholder="x (m)" value="${p.x!==undefined?p.x:''}" onchange="updateZonePoly(${z.id},${idx},'x',this.value)">
-      <input type="number" step="0.01" placeholder="y (m)" value="${p.y!==undefined?p.y:''}" onchange="updateZonePoly(${z.id},${idx},'y',this.value)">
+      <input id="zone-${z.id}-point-${idx}-x" aria-label="x ${idx+1}" type="number" step="0.01" placeholder="x (m)" value="${p.x!==undefined?p.x:''}" onchange="updateZonePoly(${z.id},${idx},'x',this.value)">
+      <input id="zone-${z.id}-point-${idx}-y" aria-label="y ${idx+1}" type="number" step="0.01" placeholder="y (m)" value="${p.y!==undefined?p.y:''}" onchange="updateZonePoly(${z.id},${idx},'y',this.value)">
     </div>`).join('');
   const area = shoelaceArea(z.polyPoints);
   const foreign=currentUiLanguage!=='ko';
@@ -3237,8 +3312,8 @@ function zonePolyFieldsHTML(z){
       <button type="button" class="btn small ghost" onclick="resetZonePoly(${z.id})">${foreign?basic.reset:'초기화'}</button>
     </div>
     <div class="field">
-      <label>${foreign?(english?'Section height / depth':'H / D'):'단면 높이(깊이)'} <span class="opt">m</span></label>
-      <input type="number" step="0.01" min="0" value="${z.polyH||''}" onchange="updateZoneField(${z.id},'polyH',this.value)">
+      <label for="zone-${z.id}-poly-height">${foreign?(english?'Section height / depth':'H / D'):'단면 높이(깊이)'} <span class="opt">m</span></label>
+      <input id="zone-${z.id}-poly-height" aria-label="${escapeV04(foreign?(english?'Section height / depth':'H / D'):'단면 높이(깊이)')}" type="number" step="0.01" min="0" value="${z.polyH||''}" onchange="updateZoneField(${z.id},'polyH',this.value)">
     </div>
     <div class="hint">${foreign?(english?'Section area':'A'):'단면적'}: ${area.toFixed(3)} ㎡</div>
   `;
@@ -3256,8 +3331,8 @@ function zoneCardHTML(z){
     ? zonePolyFieldsHTML(z)
     : `<div class="grid cols-3">` + info.fields.map(f=>`
         <div class="field">
-          <label>${f.label}</label>
-          <input type="number" step="0.01" min="0" value="${(z.vals&&z.vals[f.key]!==undefined&&!isNaN(z.vals[f.key]))?z.vals[f.key]:''}" onchange="updateZoneField(${z.id},'${f.key}',this.value)">
+          <label for="zone-${z.id}-${f.key}">${f.label}</label>
+          <input id="zone-${z.id}-${f.key}" aria-label="${escapeV04(f.label)}" type="number" step="0.01" min="0" value="${(z.vals&&z.vals[f.key]!==undefined&&!isNaN(z.vals[f.key]))?z.vals[f.key]:''}" onchange="updateZoneField(${z.id},'${f.key}',this.value)">
         </div>`).join('') + `</div>`;
   const shapeOptions = Object.entries(shapes).map(([key,inf])=>
     `<option value="${key}" ${z.shape===key?'selected':''}>${inf.label}</option>`).join('');
@@ -3265,11 +3340,11 @@ function zoneCardHTML(z){
   return `
     <div class="zone-card">
       <div class="zone-card-head">
-        <input type="text" class="zone-name" placeholder="${foreign?(basic.zone+' ('+basic.optional+')'):'구역명(선택, 예: 본체)'}" value="${escapeV04(z.name||'')}" onchange="updateZoneField(${z.id},'name',this.value)">
-        <select onchange="updateZoneField(${z.id},'shape',this.value)">${shapeOptions}</select>
+        <input id="zone-${z.id}-name" aria-label="${escapeV04(foreign?basic.zone:'구역명')}" type="text" class="zone-name" placeholder="${foreign?(basic.zone+' ('+basic.optional+')'):'구역명(선택, 예: 본체)'}" value="${escapeV04(z.name||'')}" onchange="updateZoneField(${z.id},'name',this.value)">
+        <select id="zone-${z.id}-shape" aria-label="${escapeV04(foreign?basic.zone:'구역')}" onchange="updateZoneField(${z.id},'shape',this.value)">${shapeOptions}</select>
         <div class="zone-sign">
-          <button type="button" class="${z.sign!==-1?'active':''}" onclick="updateZoneField(${z.id},'sign',1)">+ ${foreign?basic.add:'합산'}</button>
-          <button type="button" class="${z.sign===-1?'active':''}" onclick="updateZoneField(${z.id},'sign',-1)">− ${foreign?basic.subtract:'차감'}</button>
+          <button type="button" aria-pressed="${z.sign!==-1?'true':'false'}" class="${z.sign!==-1?'active':''}" onclick="updateZoneField(${z.id},'sign',1)">+ ${foreign?basic.add:'합산'}</button>
+          <button type="button" aria-pressed="${z.sign===-1?'true':'false'}" class="${z.sign===-1?'active':''}" onclick="updateZoneField(${z.id},'sign',-1)">− ${foreign?basic.subtract:'차감'}</button>
         </div>
         <button type="button" class="btn small danger" onclick="removeZone(${z.id})">${foreign?basic.delete:'삭제'}</button>
       </div>
@@ -3544,9 +3619,14 @@ function renderFanTable(){
     const needQty = effective>0 ? Math.ceil(requiredQ/effective) : 0;
     const supply = effective * f.qty;
     totalSupply += supply;
+    const idPrefix=`fan-${f.id}`;
+    const correctionLabel=foreign?detail.correctionInput:'보정값';
+    const basisHint=f.flowMethod==='estimate'
+      ? (foreign?detail.efficiency:'효율')
+      : (foreign?(f.flowMethod==='measured'?detail.measured:detail.operatingPoint):(f.flowMethod==='measured'?'실측':'운전점'));
     const basisInput = f.flowMethod==='estimate'
-      ? `<div class="fan-basis-wrap"><input class="fan-basis-input" type="number" value="${f.eff}" min="0" max="100" onchange="updateFan(${f.id},'eff',this.value)"><div class="hint">${english?detail.efficiency:''} %</div></div>`
-      : `<div class="fan-basis-wrap"><input class="fan-basis-input" type="number" value="${f.appliedFlow||0}" min="0" step="0.1" onchange="updateFan(${f.id},'appliedFlow',this.value)"><div class="hint">${english?(f.flowMethod==='measured'?detail.measured:detail.operatingPoint):''} ㎥/h</div></div>`;
+      ? `<div class="fan-basis-wrap"><input id="${idPrefix}-basis" class="fan-basis-input" aria-label="${escapeV04(correctionLabel)} · ${escapeV04(basisHint)}" type="number" value="${f.eff}" min="0" max="100" onchange="updateFan(${f.id},'eff',this.value)"><div class="hint">${escapeV04(basisHint)} · %</div></div>`
+      : `<div class="fan-basis-wrap"><input id="${idPrefix}-basis" class="fan-basis-input" aria-label="${escapeV04(correctionLabel)} · ${escapeV04(basisHint)}" type="number" value="${f.appliedFlow||0}" min="0" step="0.1" onchange="updateFan(${f.id},'appliedFlow',this.value)"><div class="hint">${escapeV04(basisHint)} · ㎥/h</div></div>`;
     const diameterM = (parseFloat(f.ductDiameter)||0)/1000;
     const ductVelocity = diameterM>0 && effective>0
       ? effective/3600/(Math.PI*Math.pow(diameterM,2)/4)
@@ -3554,19 +3634,19 @@ function renderFanTable(){
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td data-label="${foreign?labels.equipment:'장비명'}"><input type="text" value="${escapeV04(f.name)}" onchange="updateFan(${f.id},'name',this.value)" placeholder="${foreign?labels.equipment:'예: 이동식 송풍기 #1'}"></td>
-      <td data-label="${foreign?labels.rated+' (㎥/h)':'정격풍량(㎥/h)'}"><input type="number" value="${f.rated}" min="0" onchange="updateFan(${f.id},'rated',this.value)"></td>
-      <td data-label="${foreign?labels.basis:'풍량 적용방식'}"><select onchange="updateFan(${f.id},'flowMethod',this.value)">
+      <td data-label="${foreign?labels.equipment:'장비명'}"><input id="${idPrefix}-name" aria-label="${escapeV04(foreign?labels.equipment:'장비명')}" type="text" value="${escapeV04(f.name)}" onchange="updateFan(${f.id},'name',this.value)" placeholder="${foreign?labels.equipment:'예: 이동식 송풍기 #1'}"></td>
+      <td data-label="${foreign?labels.rated+' (㎥/h)':'정격풍량(㎥/h)'}"><input id="${idPrefix}-rated" aria-label="${escapeV04(foreign?labels.rated:'정격풍량')}" type="number" value="${f.rated}" min="0" onchange="updateFan(${f.id},'rated',this.value)"></td>
+      <td class="fan-flow-method-cell" data-label="${foreign?labels.basis:'풍량 적용방식'}"><select id="${idPrefix}-method" aria-label="${escapeV04(foreign?labels.basis:'풍량 적용방식')}" onchange="updateFan(${f.id},'flowMethod',this.value)">
         <option value="estimate" ${f.flowMethod==='estimate'?'selected':''}>${methods.estimate || detail.fanMethods.estimate}</option>
         <option value="manufacturer" ${f.flowMethod==='manufacturer'?'selected':''}>${methods.manufacturer || detail.fanMethods.manufacturer}</option>
         <option value="measured" ${f.flowMethod==='measured'?'selected':''}>${methods.measured || detail.fanMethods.measured}</option>
       </select></td>
-      <td data-label="${foreign?(english?'Correction / input':'% / Q'):'보정값'}">${basisInput}</td>
-      <td data-label="${foreign?labels.explosion:'방폭'}"><input type="checkbox" ${f.explosion?'checked':''} onchange="updateFan(${f.id},'explosion',this.checked)"></td>
-      <td data-label="${foreign?labels.applied+' (㎥/h)':'적용풍량(㎥/h)'}"><div class="fan-output-wrap">${effective.toFixed(1)}<div class="hint" style="margin-top:2px;">${foreign?labels.required:'필요'} ${needQty}</div></div></td>
-      <td data-label="${foreign?labels.qty:'계획 대수'}"><input type="number" value="${f.qty}" min="0" onchange="updateFan(${f.id},'qty',this.value)"></td>
+      <td class="fan-basis-cell" data-label="${escapeV04(correctionLabel)}">${basisInput}</td>
+      <td data-label="${foreign?labels.explosion:'방폭'}"><input id="${idPrefix}-explosion" aria-label="${escapeV04(foreign?labels.explosion:'방폭')}" type="checkbox" ${f.explosion?'checked':''} onchange="updateFan(${f.id},'explosion',this.checked)"></td>
+      <td data-label="${foreign?labels.applied+' (㎥/h)':'적용풍량(㎥/h)'}"><div class="fan-output-wrap">${effective.toFixed(1)}<div class="hint" style="margin-top:2px;">Nmin = ${needQty}</div></div></td>
+      <td data-label="${foreign?labels.qty:'계획 대수'}"><input id="${idPrefix}-qty" aria-label="${escapeV04(foreign?labels.qty:'계획 대수')}" type="number" value="${f.qty}" min="0" onchange="updateFan(${f.id},'qty',this.value)"></td>
       <td data-label="${foreign?labels.supply+' (㎥/h)':'공급풍량(㎥/h)'}">${supply.toFixed(1)}</td>
-      <td class="fan-delete-cell"><button class="btn small danger fan-delete-btn" onclick="removeFan(${f.id})">${foreign?basic.delete:'삭제'}</button></td>
+      <td class="fan-delete-cell"><button type="button" class="btn small danger fan-delete-btn" onclick="removeFan(${f.id})">${foreign?basic.delete:'삭제'}</button></td>
     `;
     tbody.appendChild(tr);
     const advancedTr = document.createElement('tr');
@@ -3575,11 +3655,11 @@ function renderFanTable(){
       <details class="fan-advanced" ${f.advancedOpen?'open':''} ontoggle="setFanAdvancedOpen(${f.id},this.open)">
         <summary>${foreign?detail.optionalDuct:'선택 입력 · 덕트·정압 조건'} ${foreign?'('+(f.flowMethod==='estimate'?detail.currentEfficiency:detail.recordBasis)+')':(f.flowMethod==='estimate'?'(계산에는 현재 유효율 적용)':'(풍량 근거 기록)')}</summary>
         <div class="fan-advanced-grid">
-          <div class="field"><label>${foreign?detail.ductDiameter:'덕트 지름'} (mm)</label><input type="number" min="0" value="${f.ductDiameter||0}" onchange="updateFan(${f.id},'ductDiameter',this.value)"></div>
-          <div class="field"><label>${foreign?detail.ductLength:'덕트 길이'} (m)</label><input type="number" min="0" step="0.1" value="${f.ductLength||0}" onchange="updateFan(${f.id},'ductLength',this.value)"></div>
-          <div class="field"><label>${foreign?detail.bendCount:'굴곡 개수'}</label><input type="number" min="0" step="1" value="${f.bendCount||0}" onchange="updateFan(${f.id},'bendCount',this.value)"></div>
-          <div class="field"><label>${foreign?detail.staticPressure:'운전 정압'} (Pa)</label><input type="number" min="0" step="1" value="${f.staticPressure||0}" onchange="updateFan(${f.id},'staticPressure',this.value)"></div>
-          <div class="field fan-advanced-note"><label>${foreign?detail.performanceNote:'성능자료·실측 메모'}</label><input type="text" value="${escapeV04(f.advancedNote||'')}" onchange="updateFan(${f.id},'advancedNote',this.value)" placeholder="${foreign?'—':'예: 제조사 곡선 250Pa / 열선풍속계 실측'}"></div>
+          <div class="field"><label for="${idPrefix}-diameter">${foreign?detail.ductDiameter:'덕트 지름'} (mm)</label><input id="${idPrefix}-diameter" aria-label="${escapeV04(foreign?detail.ductDiameter:'덕트 지름')}" type="number" min="0" value="${f.ductDiameter||0}" onchange="updateFan(${f.id},'ductDiameter',this.value)"></div>
+          <div class="field"><label for="${idPrefix}-length">${foreign?detail.ductLength:'덕트 길이'} (m)</label><input id="${idPrefix}-length" aria-label="${escapeV04(foreign?detail.ductLength:'덕트 길이')}" type="number" min="0" step="0.1" value="${f.ductLength||0}" onchange="updateFan(${f.id},'ductLength',this.value)"></div>
+          <div class="field"><label for="${idPrefix}-bends">${foreign?detail.bendCount:'굴곡 개수'}</label><input id="${idPrefix}-bends" aria-label="${escapeV04(foreign?detail.bendCount:'굴곡 개수')}" type="number" min="0" step="1" value="${f.bendCount||0}" onchange="updateFan(${f.id},'bendCount',this.value)"></div>
+          <div class="field"><label for="${idPrefix}-pressure">${foreign?detail.staticPressure:'운전 정압'} (Pa)</label><input id="${idPrefix}-pressure" aria-label="${escapeV04(foreign?detail.staticPressure:'운전 정압')}" type="number" min="0" step="1" value="${f.staticPressure||0}" onchange="updateFan(${f.id},'staticPressure',this.value)"></div>
+          <div class="field fan-advanced-note"><label for="${idPrefix}-note">${foreign?detail.performanceNote:'성능자료·실측 메모'}</label><input id="${idPrefix}-note" aria-label="${escapeV04(foreign?detail.performanceNote:'성능자료·실측 메모')}" type="text" value="${escapeV04(f.advancedNote||'')}" onchange="updateFan(${f.id},'advancedNote',this.value)" placeholder="${foreign?'—':'예: 제조사 곡선 250Pa / 열선풍속계 실측'}"></div>
         </div>
         <div class="hint">${english?(ductVelocity>0?`Average duct velocity from applied airflow: <b>${ductVelocity.toFixed(2)} m/s</b>. `:''):(foreign?(ductVelocity>0?`v = <b>${ductVelocity.toFixed(2)} m/s</b>`:''):(ductVelocity>0?`적용풍량 기준 덕트 평균 유속 약 <b>${ductVelocity.toFixed(2)} m/s</b>. `:''))}${english?'Duct conditions alone do not determine actual airflow. Use the manufacturer operating point or a field measurement.':(foreign?'':'덕트 조건만으로 실제 풍량을 확정할 수 없습니다. 제조사 성능곡선의 운전점 풍량 또는 현장 실측값을 적용하십시오.')}</div>
       </details>
@@ -3754,7 +3834,7 @@ function downloadOrSave(filename, content, mime){
 }
 function exportFans(){
   const data = JSON.stringify(state.fans, null, 2);
-  downloadOrSave('송배풍기_목록.json', data, 'application/json');
+  downloadOrSave('ventcalc_blowers.json', data, 'application/json');
 }
 function importFans(e){
   const file = e.target.files[0];
@@ -3807,7 +3887,7 @@ function renderReport(){
     : `희석환기식 · 안전계수 K=${formatCriterionNumber(document.getElementById(r.mode==='C'?'c-k':'b-k')?.value || 1)}`;
 
   document.getElementById('print-title').innerHTML =
-    `<span class="pt-title-wrap"><small class="pt-kicker">PRE-WORK VENTILATION REVIEW</small><strong>밀폐공간 환기량 사전검토 결과서</strong></span>
+    `<span class="pt-title-wrap"><small class="pt-kicker">작업 전 환기 검토</small><strong>밀폐공간 환기량 사전검토 결과서</strong></span>
      <span class="pt-sub"><b>사전검토용 · 현장 측정 필수</b>${spaceName ? `<span>${escapeReportText(spaceName)}</span>` : ''}<span>작성일 ${dateStr}</span></span>`;
 
   let modeSpecific = '';
@@ -3951,7 +4031,7 @@ function buildReferenceHTML(mode){
 
 /* ------------------------------------------------------------
    다국어 인쇄 보조 페이지
-   - 한국어 결과서가 법적·업무상 원본이며 번역 페이지는 이해 보조용
+   - 현재 화면 언어를 기본 결과서로 사용하고 선택 언어마다 별도 문서를 생성
    - 선택한 언어마다 인쇄 시 새 페이지를 추가
    ------------------------------------------------------------ */
 const PRINT_I18N = {
@@ -4130,8 +4210,8 @@ function makeSupplementalPrintPack(code){
   return {
     name:meta ? meta[2] : code,
     title:u[0],
-    subtitle:u[13] || en.subtitle,
-    disclaimer:u[14] || en.disclaimer,
+    subtitle:'',
+    disclaimer:u[4],
     h:[u[6][1],u[6][3],u[6][4],u[12] || en.h[3],u[3]],
     l:labels,
     modes:{
@@ -4155,6 +4235,8 @@ function makeSupplementalPrintPack(code){
 }
 PRINT_LANG_CODES.forEach(code=>{
   if(!PRINT_I18N[code]) PRINT_I18N[code]=makeSupplementalPrintPack(code);
+  PRINT_I18N[code].subtitle='';
+  PRINT_I18N[code].disclaimer=getUiText(code)[4];
 });
 
 function getSelectedPrintLanguages(){
@@ -4164,20 +4246,6 @@ function escapeReportText(value){
   return String(value===undefined || value===null ? '' : value)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-const PRINT_LANGUAGE_KO = Object.fromEntries(
-  UI_LANGUAGE_META.filter(x=>x[0]!=='ko').map(([code,ko])=>[code,ko])
-);
-const PRINT_SIGN_LABELS = {
-  en:{role:'Role',name:'Name',sign:'Signature',date:'Date'},
-  zh:{role:'区分',name:'姓名',sign:'签名',date:'日期'},
-  ja:{role:'区分',name:'氏名',sign:'署名',date:'日付'},
-  vi:{role:'Vai trò',name:'Họ tên',sign:'Chữ ký',date:'Ngày'},
-  th:{role:'หน้าที่',name:'ชื่อ',sign:'ลายเซ็น',date:'วันที่'},
-  id:{role:'Peran',name:'Nama',sign:'Tanda tangan',date:'Tanggal'},
-  mn:{role:'Үүрэг',name:'Нэр',sign:'Гарын үсэг',date:'Огноо'},
-  my:{role:'တာဝန်',name:'အမည်',sign:'လက်မှတ်',date:'ရက်စွဲ'},
-  km:{role:'តួនាទី',name:'ឈ្មោះ',sign:'ហត្ថលេខា',date:'កាលបរិច្ឆេទ'}
-};
 const PRINT_CRITERIA_I18N = {
   en:{label:'Applied criterion',volume:(m,a)=>`Initial ${m}× · During work ${a} ACH`,dilution:k=>`Dilution equation · Safety factor K=${k}`},
   zh:{label:'适用通风标准',volume:(m,a)=>`初始送风 ${m} 倍 · 作业中 ${a} 次/h`,dilution:k=>`稀释通风公式 · 安全系数 K=${k}`},
@@ -4217,6 +4285,9 @@ function renderTranslatedReports(){
     const t = PRINT_I18N[code];
     if(!t) return '';
     const full = getFullUiText(code);
+    const languageLabel=typeof v05BilingualLanguageName==='function'
+      ? v05BilingualLanguageName(code,currentUiLanguage)
+      : (UI_LANGUAGE_META.find(item=>item[0]===code)?.[2]||code);
     const ci = PRINT_CRITERIA_I18N[code] || PRINT_CRITERIA_I18N.en;
     const criterionText = r.mode==='A' ? ci.volume(multiplier,ach) : ci.dilution(safetyFactor);
     const fanRows = state.fans.map(f=>{
@@ -4231,8 +4302,8 @@ function renderTranslatedReports(){
     }
     const checks = t.checks.map(c=>`<div class="translated-check"><b>□ ${c[0]}</b>${c[1]}</div>`).join('');
     const translatedOk = requiredQ>0 && totalSupply>=requiredQ;
-    return `<section class="translated-report" lang="${code}" data-language="${code}">
-      <div class="translated-title"><span class="translated-title-main"><small>PRE-WORK VENTILATION REVIEW</small>${t.title}</span><small><b>${PRINT_LANGUAGE_KO[code]||code} / ${t.name}</b><br>${appVersionText(t.subtitle)}</small></div>
+    return `<section class="translated-report" lang="${escapeReportText(localeV04For(code))}" data-language="${code}">
+      <div class="translated-title"><span class="translated-title-main">${t.title}</span><small><b>${escapeReportText(languageLabel)}</b><br>${APP_VERSION}</small></div>
       <div class="translated-disclaimer">${t.disclaimer}</div>
       <h3><span>1</span>${t.h[0]}</h3>
       <div class="translated-overview-grid">
@@ -4256,7 +4327,7 @@ function renderTranslatedReports(){
       <table class="translated-equipment-table"><thead><tr><th>${t.l.equipment}</th><th>${t.l.rated}</th><th>${t.l.basis}</th><th>${t.l.explosion}</th><th>${t.l.applied}</th><th>${t.l.qty}</th></tr></thead><tbody>${fanRows}</tbody></table>
       <h3><span>4</span>${t.h[3]}</h3><div class="translated-checks">${checks}</div>
       <h3><span>5</span>${t.h[4]}</h3><div class="note danger">${t.safety}</div>
-      <div class="translated-document-footer"><span>${APP_VERSION}</span><span>${appVersionText(t.subtitle)}</span></div>
+      <div class="translated-document-footer"><span>${APP_VERSION}</span><span>${escapeReportText(languageLabel)}</span></div>
     </section>`;
   }).join('');
 }
@@ -4368,9 +4439,9 @@ function restoreSession(data){
 function saveSessionToFile(){
   const data = serializeSession();
   const jsonStr = JSON.stringify(data, null, 2);
-  const nameSafe = (data.spaceName || '밀폐공간').replace(/[\\/:*?"<>|]/g,'_').trim() || '밀폐공간';
+  const nameSafe = (data.spaceName || 'space').replace(/[\\/:*?"<>|]/g,'_').trim() || 'space';
   const dateSafe = data.savedAt.slice(0,10);
-  const filename = `세션_${nameSafe}_${dateSafe}.json`;
+  const filename = `ventcalc_session_${nameSafe}_${dateSafe}.json`;
   downloadOrSave(filename, jsonStr, 'application/json');
 }
 
@@ -4599,18 +4670,20 @@ function setV04SupplementalPrintLanguage(code,checked){
   renderTranslatedReports();
 }
 function v04SupplementalLanguageLabel(code,fallback){
-  try{return new Intl.DisplayNames([localeV04For(currentUiLanguage)],{type:'language'}).of(localeV04For(code))||fallback;}catch(_){return fallback;}
+  const native=v04LanguageMeta(code)[2]||code;
+  try{return new Intl.DisplayNames([localeV04For(currentUiLanguage)],{type:'language'}).of(localeV04For(code))||native;}catch(_){return native;}
 }
 function renderV04PrintLanguageGrid(){
   const grid=document.getElementById('print-language-grid');
   if(grid){
-    grid.innerHTML=UI_LANGUAGE_META.filter(item=>item[0]!==currentUiLanguage).map(([code,mainLanguageName,native])=>
-      `<label><input type="checkbox" name="print-lang" value="${code}" ${v04SupplementalPrintLanguages.has(code)?'checked':''} onchange="setV04SupplementalPrintLanguage('${code}',this.checked)"><span class="lang-main">${escapeV04(v04SupplementalLanguageLabel(code,mainLanguageName))}</span><span class="lang-native"> · ${native}</span></label>`
-    ).join('');
+    grid.innerHTML=UI_LANGUAGE_META.filter(item=>item[0]!==currentUiLanguage).map(([code,mainLanguageName,native])=>{
+      const localized=v04SupplementalLanguageLabel(code,mainLanguageName);
+      const duplicate=localized.localeCompare(native,localeV04For(currentUiLanguage),{sensitivity:'base'})===0;
+      return `<label><input type="checkbox" name="print-lang" value="${code}" ${v04SupplementalPrintLanguages.has(code)?'checked':''} onchange="setV04SupplementalPrintLanguage('${code}',this.checked)"><span class="lang-main">${escapeV04(localized)}</span>${duplicate?'':`<span class="lang-native"> · ${escapeV04(native)}</span>`}</label>`;
+    }).join('');
   }
-  const meta=v04LanguageMeta(currentUiLanguage);
   const hint=document.querySelector('.language-options > .hint');
-  if(hint)hint.textContent=`① ${meta[2]} = Primary · ☑ +1 page / Additional document`;
+  if(hint)hint.textContent=getUiText(currentUiLanguage)[14];
   const card=document.getElementById('report-card');
   if(card)card.dataset.primaryLang=currentUiLanguage;
 }
@@ -4645,11 +4718,7 @@ function setPrintPaper(value){
   document.documentElement.dataset.printPaper=v04Paper;
   const note=document.getElementById('paper-support-note');
   if(note){
-    note.textContent=v04Paper==='Letter'
-      ? (currentUiLanguage==='ko'
-          ? 'Letter 레이아웃을 적용합니다. 휴대폰 인쇄창이 A4를 유지하면 인쇄 서비스의 용지 항목에서 US Letter를 직접 선택하십시오.'
-          : 'Letter layout is applied. If the mobile print dialog still shows A4, select US Letter in the print service.')
-      : '';
+    note.textContent=v04Paper==='Letter'?'US Letter · 8.5 × 11 in':'';
   }
 }
 function setV04UnitSystem(value,automatic=false){
@@ -4659,9 +4728,7 @@ function setV04UnitSystem(value,automatic=false){
   const note=document.getElementById('unit-support-note');
   if(note){
     note.textContent=v04UnitSystem==='us'
-      ? (currentUiLanguage==='ko'
-          ? '결과는 ft³·CFM을 먼저 표시하고 SI를 병기합니다. 치수·장비 입력과 저장 데이터는 SI이며, CFM 장비값은 5단계 변환기를 사용하십시오.'
-          : 'Results show ft³/CFM first with SI in parentheses. Dimension/equipment inputs and saved data remain SI; use the Step 5 converter for CFM equipment data.')
+      ? 'US: ft³ · CFM  /  SI: m³ · m³/h'
       : '';
   }
   if(state.result && state.mode)computeAndRenderStep4();
@@ -4673,12 +4740,14 @@ function buildV04TranslatedLegalHTML(code){
   const t=v04Terms(code);
   const p=V04_PROFILES[v04Jurisdiction]||V04_PROFILES.kr;
   const sourceLanguage=v05LegalSourceLanguage(v04Jurisdiction);
+  const sourceLocale=localeV04For(sourceLanguage);
+  const sourceDir=['ar','fa','ur'].includes(sourceLanguage)?'rtl':'ltr';
   const rows=d.rows.map(([label,value])=>`<tr><td>${escapeV04(label)}</td><td>${escapeV04(value)}</td></tr>`).join('');
   const links=[[p.source,p.url],...(p.extraSources||[])].filter(x=>x[1]).map(([label,url])=>
-    `<a href="${escapeV04(url)}" target="_blank" rel="noopener noreferrer">${escapeV04(label)}</a>`).join(' · ');
+    `<a lang="${escapeV04(sourceLocale)}" dir="${sourceDir}" href="${escapeV04(url)}" target="_blank" rel="noopener noreferrer">${escapeV04(label)}</a>`).join(' · ');
   return `<h3 class="translated-legal-heading"><span>6</span>${escapeV04(t[3])}</h3>
-    <table class="translated-legal-table" lang="${escapeV04(localeV04For(sourceLanguage))}"><tbody>${rows}<tr><td>${escapeV04(t[1])}</td><td>${escapeV04(d.clauses)}</td></tr></tbody></table>
-    <div class="translated-legal-source"><b>${escapeV04(v05LegalSourceLabel(code))}</b><br>${links}<br>${escapeV04(t[4])}</div>`;
+    <table class="translated-legal-table" lang="${escapeV04(sourceLocale)}" dir="${sourceDir}"><tbody>${rows}</tbody></table>
+    <div class="translated-legal-source"><b>${escapeV04(v05LegalSourceLabel(code))}</b><br><span lang="${escapeV04(sourceLocale)}" dir="${sourceDir}">${escapeV04(d.clauses)}</span><br>${links}<br>${escapeV04(t[4])}</div>`;
 }
 function applyV04PlanningHints(){
   const mult=document.getElementById('a-multiplier')?.closest('.field');
@@ -4702,13 +4771,8 @@ function applyV04PlanningHints(){
   [mult,ach].forEach(field=>{const opt=field?.querySelector('label .opt');if(opt)opt.textContent=term;});
   const multHint=mult?.querySelector(':scope > .hint');
   const achHint=ach?.querySelector(':scope > .hint');
-  const english=currentUiLanguage!=='ko';
-  if(multHint)multHint.textContent=english
-    ? 'Enter the site-approved initial purge multiplier. This profile does not treat 10× as a universal statutory value.'
-    : '사업장 위험성평가·공학기준으로 승인한 최초 퍼지 배수를 입력하십시오. 이 프로필에서 10배는 보편적인 법정 고정값이 아닙니다.';
-  if(achHint)achHint.textContent=english
-    ? 'Enter the site-approved continuous air-change rate. Verify safe conditions by atmospheric testing and monitoring.'
-    : '사업장 위험성평가·공학기준으로 승인한 연속 환기횟수를 입력하십시오. 안전조건은 대기 시험·감시로 확인해야 합니다.';
+  if(multHint)multHint.textContent=`${term} · ×`;
+  if(achHint)achHint.textContent=`${term} · ACH`;
 }
 function scrollV04StepIntoView(n){
   if(!v04StepScrollReady)return;
@@ -4746,8 +4810,10 @@ function setJurisdictionProfile(value){
   if(note) note.textContent=`${v05ProfileDisplayName(v04Jurisdiction) } — ${terms[4]}`;
   const src=document.getElementById('profile-source');
   if(src){
+    const sourceLanguage=v05LegalSourceLanguage(v04Jurisdiction),sourceLocale=localeV04For(sourceLanguage);
+    const sourceDir=['ar','fa','ur'].includes(sourceLanguage)?'rtl':'ltr';
     const links=[[p.source,p.url],...(p.extraSources||[])].filter(x=>x[1]).map(([label,url])=>
-      `<a href="${escapeV04(url)}" target="_blank" rel="noopener noreferrer">${escapeV04(label)}</a>`).join(' · ');
+      `<a lang="${escapeV04(sourceLocale)}" dir="${sourceDir}" href="${escapeV04(url)}" target="_blank" rel="noopener noreferrer">${escapeV04(label)}</a>`).join(' · ');
     src.innerHTML=`<b>${escapeV04(terms[1])}:</b> ${links} <span>· ${escapeV04(p.reviewedAt||'—')} · ${escapeV04(terms[4])}</span>`;
   }
   applyV04PlanningHints();
@@ -4925,7 +4991,7 @@ function buildV04ReferenceHTML(mode){
 function updateV04ScreenReferencePanel(){
   const panel=document.querySelector('details.ref-panel');
   if(!panel)return;
-  if(v04Jurisdiction==='kr'){
+  if(v04Jurisdiction==='kr'&&currentUiLanguage==='ko'){
     if(v04KoreanReferencePanelHTML&&panel.dataset.profile!=='kr'){
       panel.innerHTML=v04KoreanReferencePanelHTML;
       panel.dataset.profile='kr';
@@ -4934,7 +5000,8 @@ function updateV04ScreenReferencePanel(){
     return;
   }
   const p=V04_PROFILES[v04Jurisdiction];
-  const title=`📋 ${v04Terms()[3]} — ${p.label}`;
+  const profileName=v05ProfileDisplayName(v04Jurisdiction,currentUiLanguage);
+  const title=`📋 ${v04Terms()[3]} — ${profileName}`;
   const translated=PRINT_I18N[currentUiLanguage]||PRINT_I18N.en;
   const screenChecks=currentUiLanguage==='ko'
     ? buildV04PermitChecklistHTML()
@@ -4944,7 +5011,7 @@ function updateV04ScreenReferencePanel(){
     : buildV04TranslatedLegalHTML(currentUiLanguage);
   panel.dataset.profile=v04Jurisdiction;
   panel.innerHTML=`<summary>${title}</summary><div class="ref-panel-body">
-    <div class="note"><b>${escapeV04(p.label)}</b><br>${escapeV04(v04Terms()[4])}</div>
+    <div class="note"><b>${escapeV04(profileName)}</b><br>${escapeV04(v04Terms()[4])}</div>
     ${screenChecks}
     ${references}
   </div>`;
@@ -4972,14 +5039,16 @@ function showV04Validation(items){
 }
 function validateV04Calculation(){
   const bad=[];
-  const positive=(id,label)=>{const el=document.getElementById(id),n=Number(el?.value);if(!Number.isFinite(n)||n<=0)bad.push(label);};
+  const full=getFullUiText();
+  const numeric=value=>typeof parseV05Number==='function'?parseV05Number(value):Number(value);
+  const positive=(id,label)=>{const el=document.getElementById(id),n=numeric(el?.value);if(!Number.isFinite(n)||n<=0)bad.push(label);};
   if(!state.mode) bad.push(getUiText()[5][0]);
-  if(!Number.isFinite(state.volume)||state.volume<=0) bad.push((getFullUiText().volumeResult||'Space volume'));
-  if(state.mode==='A'){positive('a-multiplier','Initial purge multiplier');positive('a-ach','Continuous ACH');}
-  if(state.mode==='B'){positive('b-w','W');positive('b-m','M');positive('b-tlv','Exposure limit');positive('b-k','K');}
+  if(!Number.isFinite(state.volume)||state.volume<=0) bad.push(full.volumeResult||PRINT_I18N[currentUiLanguage]?.l?.volume||'V');
+  if(state.mode==='A'){positive('a-multiplier',full.aMultiplier);positive('a-ach',full.aAch);}
+  if(state.mode==='B'){positive('b-w',full.bW);positive('b-m',full.bM);positive('b-tlv',full.bTlv);positive('b-k',full.bK);}
   if(state.mode==='C'){
-    positive('c-q','Q');positive('c-t','t');positive('c-callow','Exposure limit');positive('c-k','K');
-    ['c-c0','c-ct'].forEach(id=>{const n=Number(document.getElementById(id)?.value);if(!Number.isFinite(n)||n<0)bad.push(id==='c-c0'?'C0':'C(t)');});
+    positive('c-q',full.cQ);positive('c-t',full.cT);positive('c-callow',full.cCallow);positive('c-k',full.cK);
+    ['c-c0','c-ct'].forEach(id=>{const n=numeric(document.getElementById(id)?.value);if(!Number.isFinite(n)||n<0)bad.push(id==='c-c0'?full.cC0:full.cCt);});
   }
   showV04Validation(bad);
   return bad.length===0;
@@ -5064,11 +5133,13 @@ function updateV04PrintMeta(){
     const terms=v04Terms(code);
     const ui=V04_UI[code]||V04_UI.en;
     const dateLabel=PRINT_I18N[code]?.l?.date||terms[6];
+    const sourceLanguage=v05LegalSourceLanguage(v04Jurisdiction),sourceLocale=localeV04For(sourceLanguage);
+    const sourceDir=['ar','fa','ur'].includes(sourceLanguage)?'rtl':'ltr';
     const companyMeta=ref?`<div><span>${escapeV04(ui[1])}</span><br><b>${escapeV04(ref)}</b></div>`:'';
     const sourceLink=p.url
-      ? `<a href="${escapeV04(p.url)}" target="_blank" rel="noopener noreferrer">${escapeV04(p.source)}</a>`
-      : escapeV04(p.source);
-    const markup=`<div class="global-print-meta"><div><span>${escapeV04(ui[0])}</span><br><b>${escapeV04(p.label)}</b></div>${companyMeta}<div><span>${escapeV04(terms[1])}</span><br><b>${sourceLink}</b></div><div><span>${escapeV04(dateLabel)} / ${escapeV04(ui[2])}</span><br><b>${escapeV04(formatV04DateFor(code))} · ${v04Paper} · ${v04UnitSystem==='us'?'US + SI':'SI'}</b></div><p class="global-profile-guidance"><b>${escapeV04(terms[2])}:</b> ${escapeV04(terms[4])}</p></div>`;
+      ? `<a lang="${escapeV04(sourceLocale)}" dir="${sourceDir}" href="${escapeV04(p.url)}" target="_blank" rel="noopener noreferrer">${escapeV04(p.source)}</a>`
+      : `<span lang="${escapeV04(sourceLocale)}" dir="${sourceDir}">${escapeV04(p.source)}</span>`;
+    const markup=`<div class="global-print-meta"><div><span>${escapeV04(ui[0])}</span><br><b>${escapeV04(v05ProfileDisplayName(v04Jurisdiction,code))}</b></div>${companyMeta}<div><span>${escapeV04(v05LegalSourceLabel(code))}</span><br><b>${sourceLink}</b></div><div><span>${escapeV04(dateLabel)} / ${escapeV04(ui[2])}</span><br><b>${escapeV04(formatV04DateFor(code))} · ${v04Paper} · ${v04UnitSystem==='us'?'US + SI':'SI'}</b></div><p class="global-profile-guidance"><b>${escapeV04(terms[2])}:</b> ${escapeV04(terms[4])}</p></div>`;
     container.querySelector(':scope > .global-print-meta')?.remove();
     container.insertAdjacentHTML('afterbegin',markup);
   });
@@ -5196,7 +5267,7 @@ renderTranslatedReports=function(){
     const code=section.dataset.language;
     section.classList.toggle('primary-translated-report',currentUiLanguage!=='ko'&&code===currentUiLanguage);
     const disclaimer=section.querySelector('.translated-disclaimer');
-    if(disclaimer&&PRINT_I18N[code]?.safety)disclaimer.textContent=PRINT_I18N[code].safety;
+    if(disclaimer&&PRINT_I18N[code]?.disclaimer)disclaimer.textContent=PRINT_I18N[code].disclaimer;
     section.querySelector('.translated-legal-heading')?.remove();
     section.querySelector('.translated-legal-table')?.remove();
     section.querySelector('.translated-legal-source')?.remove();
@@ -5259,13 +5330,24 @@ document.addEventListener('DOMContentLoaded',()=>{
 /* Localized presentation only: official rule titles and source names stay verbatim. */
 const V05_PROFILE_COUNTRIES={kr:'KR','us-general':'US','us-construction':'US',uk:'GB',au:'AU',sg:'SG',jp:'JP',br:'BR'};
 function v05ProfileLanguageName(code=currentUiLanguage){return v04LanguageMeta(code)[2]||code;}
+function v05LocalizedLanguageName(code,displayCode=currentUiLanguage){
+  const fallback=v05ProfileLanguageName(code);
+  try{return new Intl.DisplayNames([localeV04For(displayCode)],{type:'language'}).of(localeV04For(code))||fallback;}catch(_){return fallback;}
+}
+function v05BilingualLanguageName(code,displayCode=currentUiLanguage){
+  const localized=v05LocalizedLanguageName(code,displayCode);
+  const native=v05ProfileLanguageName(code);
+  try{if(localized.localeCompare(native,localeV04For(displayCode),{sensitivity:'base'})===0)return native;}catch(_){}
+  return localized===native?native:`${localized} · ${native}`;
+}
 function v05ProfileCountryName(profileCode,code=currentUiLanguage){
-  if(profileCode==='unverified')return code==='ko'?'미검증 관할':'Unverified jurisdiction';
+  if(profileCode==='unverified')return `${(V04_UI[code]||V04_UI.en)[0]} · —`;
   const region=V05_PROFILE_COUNTRIES[profileCode];
   try{return new Intl.DisplayNames([localeV04For(code)],{type:'region'}).of(region)||region;}catch(_){return region||profileCode;}
 }
 function v05ProfileDisplayName(profileCode=v04Jurisdiction,code=currentUiLanguage){
   const profile=V04_PROFILES[profileCode]||V04_PROFILES.unverified;
+  if(profileCode==='unverified')return v05ProfileCountryName(profileCode,code);
   const official=String(profile.label||profileCode).split(' · ').slice(1).join(' · ')||profile.label||profileCode;
   return `${v05ProfileCountryName(profileCode,code)} · ${official}`;
 }
@@ -5281,7 +5363,7 @@ const V05_LEGAL_SOURCE_LANGUAGE={kr:'ko',jp:'ja',br:'pt','us-general':'en','us-c
 function v05LegalSourceLanguage(profileCode=v04Jurisdiction){return V05_LEGAL_SOURCE_LANGUAGE[profileCode]||'en';}
 function v05LegalSourceLabel(documentCode=currentUiLanguage,profileCode=v04Jurisdiction){
   const sourceCode=v05LegalSourceLanguage(profileCode);
-  return `${v04Terms(documentCode)[1]}: ${v05ProfileLanguageName(sourceCode)}`;
+  return `${v04Terms(documentCode)[1]}: ${v05BilingualLanguageName(sourceCode,documentCode)}`;
 }
 </script>
   <script>
@@ -5308,7 +5390,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
   initializeLanguageControls();
   goStep(1);
   addZone('direct');
-  addFanRow(currentUiLanguage==='ko'?'이동식 송풍기 #1':((PRINT_I18N[currentUiLanguage]||PRINT_I18N.en).l.equipment+' #1'), 500, 75, false);
+  /* Keep the starter equipment name empty. A prefilled Korean or translated
+     name becomes stale as soon as the user changes the screen language. The
+     localized placeholder still explains what belongs in the field. */
+  addFanRow('', 500, 75, false);
 });
 </script>
 
@@ -5324,8 +5409,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
   .v05-regional-preference button{min-height:34px;padding:6px 11px;font:inherit;font-size:12px;font-weight:800;border:1px solid #2587b2;border-radius:8px;background:#087daf;color:#fff;cursor:pointer;white-space:nowrap;}
   .v05-recovery-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}.v05-recovery-bar .status{font-weight:700;color:#075985;}.v05-recovery-bar .muted{color:#59717e;}
   .v05-recovery-bar button{padding:6px 10px;font:inherit;font-weight:800;border:1px solid #8bbcd2;border-radius:8px;background:#fff;color:#075985;cursor:pointer;}
-  .v05-print-trace{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border:1px solid #c9dce5;border-radius:8px;overflow:hidden;margin:10px 0;font-size:10px;break-inside:avoid;page-break-inside:avoid;}
-  .v05-print-trace div{padding:5px 7px;border-right:1px solid #d7e5eb;border-bottom:1px solid #d7e5eb;overflow-wrap:anywhere;}.v05-print-trace b{display:block;color:#075985;font-size:8px;text-transform:uppercase;letter-spacing:.03em;}
+  .v05-print-trace{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border:1px solid #c9dce5;border-radius:8px;overflow:hidden;margin:10px 0;font-size:10px;break-inside:avoid;page-break-inside:avoid;}
+  .v05-print-trace div{padding:5px 7px;border-right:1px solid #d7e5eb;border-bottom:1px solid #d7e5eb;overflow-wrap:anywhere;}.v05-print-trace b{display:block;color:#075985;font-size:8px;letter-spacing:.03em;}
   :root[dir="rtl"] .metric .value,:root[dir="rtl"] .unit,:root[dir="rtl"] .v05-ltr,:root[dir="rtl"] time,:root[dir="rtl"] input[type="number"],:root[dir="rtl"] input[inputmode="decimal"]{direction:ltr;unicode-bidi:isolate;}
   :root[dir="rtl"] .v05-print-trace{direction:rtl;}:root[dir="rtl"] .v05-print-trace .v05-ltr{direction:ltr;text-align:left;}
   @media (max-width:720px){
@@ -5333,8 +5418,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     .header-tools{display:grid;grid-template-columns:minmax(0,1fr);min-width:0;max-width:100%;}
     .ui-language-control{min-width:0;max-width:100%;display:grid;grid-template-columns:minmax(0,1fr);}
     .ui-language-control span,.ui-language-control select{min-width:0;width:100%;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
-    .stepper{scroll-snap-type:x mandatory;scroll-padding-inline:12px;}
-    .stepper li{scroll-snap-align:center;}
+    .stepper{scroll-snap-type:none;scroll-padding-inline:0;}
     .v05-profile-governance dl{grid-template-columns:max-content minmax(0,1fr);gap:3px 9px;}.v05-regional-preference{grid-template-columns:1fr;gap:8px;}.v05-regional-values{justify-content:flex-start;}.v05-regional-preference button{width:100%;}.v05-print-trace{grid-template-columns:1fr 1fr;}.v05-recovery-bar{align-items:stretch;}.v05-recovery-bar button{min-height:40px;}
   }
   @media print{
@@ -5382,17 +5466,8 @@ let v05DateFormat='ymd';
 let v05DraftTimer=0;
 let v05LastDraftAt='';
 
-function v05IsKorean(){return currentUiLanguage==='ko';}
-function v05Text(ko,en){return v05IsKorean()?ko:en;}
 function v05Terms(){return v04Terms(currentUiLanguage);}
 function v05ProfilePreferences(p=v05Profile()){return {paper:p?.regionalPreferences?.paper==='Letter'?'Letter':'A4',resultUnit:p?.regionalPreferences?.resultUnit==='us'?'us':'si',inputUnit:p?.regionalPreferences?.inputUnit==='us'?'us':'si',dateFormat:['locale','ymd','dmy','mdy'].includes(p?.regionalPreferences?.dateFormat)?p.regionalPreferences.dateFormat:'locale'};}
-function v05ApprovalText(p=v05Profile()){
-  return p?.approvalStatus==='local-ehs-approved'
-    ?v05Text('현지 EHS 승인 완료','Local EHS approved')
-    :p?.approvalStatus==='unverified'
-      ?v05Text('현지 법규·EHS 승인 미검증','Local law and EHS approval unverified')
-      :v05Text('공식 출처 검토 완료 · 현지 EHS 승인 대기','Official source reviewed · local EHS approval pending');
-}
 function v05FormatDate(date,code=currentUiLanguage){
   const d=date instanceof Date?date:new Date(date);if(Number.isNaN(d.getTime()))return '—';
   if(v05DateFormat==='locale')return v05BaseFormatDateFor(code,d);
@@ -5406,7 +5481,7 @@ formatV04Date=function(date=new Date()){return v05FormatDate(date,currentUiLangu
 function setV05DateFormat(value,automatic=false){
   v05DateFormat=['locale','ymd','dmy','mdy'].includes(value)?value:'locale';
   const select=document.getElementById('date-format');if(select)select.value=v05DateFormat;
-  const note=document.getElementById('date-format-note');if(note)note.textContent=v05Terms()[6]+': '+v05FormatDate(new Date(),currentUiLanguage);
+  const note=document.getElementById('date-format-note');if(note)note.textContent=(PRINT_I18N[currentUiLanguage]?.l?.date||v05Terms()[6])+': '+v05FormatDate(new Date(),currentUiLanguage);
   if(state.step===6)renderReport();
 }
 function parseV05Number(value){
@@ -5451,12 +5526,15 @@ function v05ProfileSelect(){
 }
 function v05RenderProfileGovernance(){
   const p=v05Profile(), source=document.getElementById('profile-source');if(!source)return;
-  const languageLabel=v05ProfileLanguageName(currentUiLanguage);
+  const languageLabel=v05BilingualLanguageName(currentUiLanguage,currentUiLanguage);
   const languageMismatch=!(V05_PROFILE_LANGUAGES[v04Jurisdiction]||[]).includes(currentUiLanguage);
-  const links=[[p.source,p.url],...(p.extraSources||[])].filter(item=>item[1]).map(([label,url])=>`<a href="${escapeV04(url)}" target="_blank" rel="noopener noreferrer">${escapeV04(label)}</a>`).join(' · ');
+  const sourceLanguage=v05LegalSourceLanguage(v04Jurisdiction),sourceLocale=localeV04For(sourceLanguage);
+  const sourceDir=['ar','fa','ur'].includes(sourceLanguage)?'rtl':'ltr';
+  const sourceLanguageLabel=v05BilingualLanguageName(sourceLanguage,currentUiLanguage);
+  const links=[[p.source,p.url],...(p.extraSources||[])].filter(item=>item[1]).map(([label,url])=>`<a lang="${escapeV04(sourceLocale)}" dir="${sourceDir}" href="${escapeV04(url)}" target="_blank" rel="noopener noreferrer">${escapeV04(label)}</a>`).join(' · ');
   const t=v05Terms(), profileName=v05ProfileDisplayName(v04Jurisdiction,currentUiLanguage);
   const warning=(v04Jurisdiction==='unverified'||languageMismatch)
-    ? `<div class="v05-profile-warning">${escapeV04(t[2])}: ${escapeV04(languageLabel)} · ${escapeV04(v05ProfileCountryName(v04Jurisdiction,currentUiLanguage))}</div>`:'';
+    ? `<div class="v05-profile-warning"><b>${escapeV04(getUiText(currentUiLanguage)[2])}:</b> ${escapeV04(languageLabel)} · <b>${escapeV04(t[1])}:</b> ${escapeV04(sourceLanguageLabel)}</div>`:'';
   source.innerHTML=`${warning}<div class="v05-profile-governance"><dl>
     <dt>${escapeV04(t[2])}</dt><dd>${escapeV04(profileName)}</dd>
     <dt>v</dt><dd class="v05-ltr">${escapeV04(p.profileVersion||'—')} · ${escapeV04(p.reviewedAt||'—')}</dd>
@@ -5478,9 +5556,15 @@ function applyV05RegionalRecommendation(){
   v05RenderProfileGovernance();
 }
 function v05RefreshOperationalLabels(){
-  const t=v05Terms();
+  const t=v05Terms(),profileUi=V04_UI[currentUiLanguage]||V04_UI.en;
+  const dateText=`${PRINT_I18N[currentUiLanguage]?.l?.date||t[6]} · YYYY/MM/DD`;
   const input=document.querySelector('label[for="input-unit-system"]');if(input)input.textContent=t[0];
-  const date=document.querySelector('label[for="date-format"]');if(date)date.textContent=t[6];
+  const inputSelect=document.getElementById('input-unit-system');if(inputSelect)inputSelect.setAttribute('aria-label',t[0]);
+  const resultSelect=document.getElementById('unit-system');if(resultSelect)resultSelect.setAttribute('aria-label',t[0]);
+  const date=document.querySelector('label[for="date-format"]');if(date)date.textContent=dateText;
+  const dateSelect=document.getElementById('date-format');if(dateSelect)dateSelect.setAttribute('aria-label',dateText);
+  const profileSelect=document.getElementById('jurisdiction-profile');if(profileSelect)profileSelect.setAttribute('aria-label',profileUi[0]);
+  const paperSelect=document.getElementById('paper-size');if(paperSelect)paperSelect.setAttribute('aria-label',profileUi[2]);
   const locale=document.querySelector('#date-format option[value="locale"]');if(locale)locale.textContent=v05ProfileLanguageName(currentUiLanguage);
 }
 const v05SetUiLanguage=setUiLanguage;
@@ -5560,21 +5644,24 @@ function v05RenderRecoveryStatus(){
   const host=document.getElementById('v05-recovery-bar');if(!host)return;
   const draft=safeV04StorageGet(V05_AUTOSAVE_KEY);let saved='';try{saved=draft?JSON.parse(draft).draftSavedAt||'':'';}catch(_){saved='';}
   const when=saved?formatV04DateFor(currentUiLanguage,new Date(saved))+' '+new Intl.DateTimeFormat(localeV04For(currentUiLanguage),{hour:'2-digit',minute:'2-digit'}).format(new Date(saved)):'';
-  host.innerHTML=saved?`<span class="status">${escapeV04(v05Terms()[6])}</span><span class="muted v05-ltr">${escapeV04(when)}</span><button type="button" onclick="restoreV05Draft()" aria-label="${escapeV04(v05Terms()[2])}">↺</button><button type="button" onclick="clearV05Draft()" aria-label="${escapeV04(v05Terms()[2])}">×</button>`:'';
+  const ui=getUiText(),basic=getUiBasic();
+  host.innerHTML=saved?`<time class="muted v05-ltr" datetime="${escapeV04(saved)}">${escapeV04(when)}</time><button type="button" onclick="restoreV05Draft()">${escapeV04(ui[11])}</button><button type="button" onclick="clearV05Draft()">${escapeV04(basic.delete)}</button>`:'';
 }
 function saveV05Draft(){
   try{const data=v05DraftData();if(safeV04StorageSet(V05_AUTOSAVE_KEY,JSON.stringify(data))){v05LastDraftAt=data.draftSavedAt;v05RenderRecoveryStatus();}}
-  catch(_){v05ShowRuntimeNotice(v05Text('임시저장에 실패했습니다. 파일 저장으로 현재 작업을 보관하십시오.','Draft save failed. Save a session file to preserve current work.'));}
+  catch(_){v05ShowRuntimeNotice(getFullUiText().saveError);}
 }
 function scheduleV05Draft(){clearTimeout(v05DraftTimer);v05DraftTimer=setTimeout(saveV05Draft,650);}
-function restoreV05Draft(){try{const raw=safeV04StorageGet(V05_AUTOSAVE_KEY);if(!raw)return;restoreSession(JSON.parse(raw));v05RenderRecoveryStatus();}catch(_){v05ShowRuntimeNotice(v05Text('임시본을 복원할 수 없습니다. 파일 저장본을 사용하십시오.','The draft cannot be restored. Use a saved session file.'));}}
+function restoreV05Draft(){try{const raw=safeV04StorageGet(V05_AUTOSAVE_KEY);if(!raw)return;restoreSession(JSON.parse(raw));v05RenderRecoveryStatus();}catch(_){v05ShowRuntimeNotice(getFullUiText().sessionReadError);}}
 function clearV05Draft(){try{localStorage.removeItem(V05_AUTOSAVE_KEY);}catch(_){}v05RenderRecoveryStatus();}
 function v05ShowRuntimeNotice(message){const box=document.getElementById('v05-runtime-notice');if(box){box.textContent=message;box.hidden=false;}}
-function v05RuntimeRecovery(){try{saveV05Draft();}catch(_){}v05ShowRuntimeNotice(v05Text('일시적인 오류가 발생했습니다. 입력값은 기기에 보관을 시도했습니다. 새로고침 후 임시본 또는 세션 파일로 복원하십시오.','A temporary error occurred. The app attempted to preserve input on this device. Refresh and restore the draft or a session file.'));}
+function v05RuntimeRecovery(){try{saveV05Draft();}catch(_){}v05ShowRuntimeNotice(getFullUiText().saveError);}
 
 function v05TraceHTML(documentLanguage=currentUiLanguage){
-  const p=v05Profile(),now=new Date(),unit=v04UnitSystem==='us'?'US customary + SI':'SI',input=v05InputUnits==='us'?'ft / ft³ / CFM':'m / m³ / m³/h';
-  return `<div class="v05-print-trace"><div><b>Tool</b><span class="v05-ltr">${V05_VERSION}</span></div><div><b>Legal profile</b>${escapeV04(v05ProfileDisplayName(v04Jurisdiction,documentLanguage))} <span class="v05-ltr">v${escapeV04(p.profileVersion||'—')}</span></div><div><b>Approval</b>${escapeV04(v05ApprovalText(p))}</div><div><b>Review baseline</b><span class="v05-ltr">${escapeV04(p.reviewedAt||'Unverified')}</span></div><div><b>UI language</b>${escapeV04(v05ProfileLanguageName(currentUiLanguage))}</div><div><b>Document language</b>${escapeV04(v05ProfileLanguageName(documentLanguage))}</div><div><b>Units</b><span class="v05-ltr">${unit}; input ${input}</span></div><div><b>Generated</b><time class="v05-ltr">${escapeV04(now.toISOString().replace('T',' ').slice(0,19)+' UTC')}</time></div></div>`;
+  const p=v05Profile(),now=new Date(),terms=v04Terms(documentLanguage),profileUi=V04_UI[documentLanguage]||V04_UI.en;
+  const dateLabel=PRINT_I18N[documentLanguage]?.l?.date||terms[6];
+  const unit=v04UnitSystem==='us'?'US + SI':'SI',input=v05InputUnits==='us'?'ft · ft³ · CFM':'m · m³ · m³/h';
+  return `<div class="v05-print-trace"><div><b>${V05_VERSION}</b><span class="v05-ltr">v${escapeV04(p.profileVersion||'—')} · ${escapeV04(p.reviewedAt||'—')}</span></div><div><b>${escapeV04(profileUi[0])}</b>${escapeV04(v05ProfileDisplayName(v04Jurisdiction,documentLanguage))}</div><div><b>${escapeV04(terms[0])}</b><span class="v05-ltr">${unit} · ${input}</span></div><div><b>${escapeV04(dateLabel)}</b><time class="v05-ltr">${escapeV04(v05FormatDate(now,documentLanguage))}</time></div></div>`;
 }
 function v05AddTrace(container){
   if(!container)return;
@@ -5586,24 +5673,25 @@ function v05AddTrace(container){
   container.insertAdjacentHTML('afterbegin',v05TraceHTML(container.dataset.language||currentUiLanguage));
 }
 const v05RenderReport=renderReport;
-renderReport=function(){v05RenderReport();v05AddTrace(document.querySelector('.report'));};
+function v05TraceTranslatedReports(){
+  document.querySelectorAll('.translated-report,.korean-supplement-report').forEach(section=>{
+    const code=section.dataset.language||currentUiLanguage;
+    section.lang=localeV04For(code);section.dir=['ar','fa','ur'].includes(code)?'rtl':'ltr';v05AddTrace(section);
+  });
+}
+renderReport=function(){v05RenderReport();v05AddTrace(document.querySelector('.report'));v05TraceTranslatedReports();};
 const v05RenderTranslatedReports=renderTranslatedReports;
-renderTranslatedReports=function(){v05RenderTranslatedReports();document.querySelectorAll('.translated-report,.korean-supplement-report').forEach(section=>{const code=section.dataset.language||currentUiLanguage;section.lang=localeV04For(code);section.dir=['ar','fa','ur'].includes(code)?'rtl':'ltr';v05AddTrace(section);});};
+renderTranslatedReports=function(){v05RenderTranslatedReports();v05TraceTranslatedReports();};
 const v05PrintReport=printReport;
 printReport=function(){renderReport();renderTranslatedReports();v05PrintReport();};
 const v05ShowV04Validation=showV04Validation;
-showV04Validation=function(items){
-  v05ShowV04Validation(items);
-  if(!items?.length)return;
-  const box=document.getElementById('validation-summary');if(!box)return;
-  box.insertAdjacentHTML('beforeend',`<p class="hint"><b>0+ · ${escapeV04(v05Terms()[0])}</b></p>`);
-};
+showV04Validation=function(items){v05ShowV04Validation(items);};
 
 document.addEventListener('DOMContentLoaded',()=>{
   const profile=document.querySelector('.global-profile');
-  if(profile&&!document.getElementById('input-unit-system')){const t=v05Terms();profile.insertAdjacentHTML('beforeend',`<div class="field"><label for="input-unit-system">${escapeV04(t[0])}</label><select id="input-unit-system" onchange="setV05InputUnits(this.value,false)"><option value="si">SI · m / m³ / m³/h</option><option value="us">US · ft / ft³ / CFM</option></select><small id="input-unit-note" class="hint"></small></div><div class="field"><label for="date-format">${escapeV04(t[6])}</label><select id="date-format" onchange="setV05DateFormat(this.value,false)"><option value="locale">${escapeV04(v05ProfileLanguageName(currentUiLanguage))}</option><option value="ymd">YYYY.MM.DD</option><option value="dmy">DD/MM/YYYY</option><option value="mdy">MM/DD/YYYY</option></select><small id="date-format-note" class="hint"></small></div>`);}
+  if(profile&&!document.getElementById('input-unit-system')){const t=v05Terms(),dateText=`${PRINT_I18N[currentUiLanguage]?.l?.date||t[6]} · YYYY/MM/DD`;profile.insertAdjacentHTML('beforeend',`<div class="field"><label for="input-unit-system">${escapeV04(t[0])}</label><select id="input-unit-system" aria-label="${escapeV04(t[0])}" onchange="setV05InputUnits(this.value,false)"><option value="si">SI · m / m³ / m³/h</option><option value="us">US · ft / ft³ / CFM</option></select><small id="input-unit-note" class="hint"></small></div><div class="field"><label for="date-format">${escapeV04(dateText)}</label><select id="date-format" aria-label="${escapeV04(dateText)}" onchange="setV05DateFormat(this.value,false)"><option value="locale">${escapeV04(v05ProfileLanguageName(currentUiLanguage))}</option><option value="ymd">YYYY.MM.DD</option><option value="dmy">DD/MM/YYYY</option><option value="mdy">MM/DD/YYYY</option></select><small id="date-format-note" class="hint"></small></div>`);}
   const session=document.querySelector('.session-bar');if(session&&!document.getElementById('v05-recovery-bar'))session.insertAdjacentHTML('beforebegin',`<div id="v05-recovery-bar" class="v05-recovery-bar no-print" aria-live="polite"></div><div id="v05-runtime-notice" class="v05-runtime-notice no-print" role="alert" hidden></div>`);
-  v05ProfileSelect();v05RenderProfileGovernance();v05PrepareNumericInputs();const defaultPref=v05ProfilePreferences();setV05InputUnits(defaultPref.inputUnit,true);setV05DateFormat(defaultPref.dateFormat,true);v05RenderRecoveryStatus();
+  v05ProfileSelect();v05RefreshProfileOptions();v05RefreshOperationalLabels();v05RenderProfileGovernance();v05PrepareNumericInputs();const defaultPref=v05ProfilePreferences();setV05InputUnits(defaultPref.inputUnit,true);setV05DateFormat(defaultPref.dateFormat,true);v05RenderRecoveryStatus();
   document.addEventListener('change',event=>{if(event.target?.matches?.('input[data-v05-numeric="true"],input[type="number"]'))v05NormalizeNumericInput(event.target);scheduleV05Draft();},true);
   document.addEventListener('input',event=>{if(event.target?.matches?.('input,select,textarea'))scheduleV05Draft();},true);
   window.addEventListener('error',v05RuntimeRecovery);window.addEventListener('unhandledrejection',v05RuntimeRecovery);

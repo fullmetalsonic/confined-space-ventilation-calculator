@@ -8,7 +8,7 @@ $utf8 = [System.Text.Encoding]::UTF8
 $sourceIndex = Join-Path $root 'src\index.html'
 $bundle = Join-Path $root 'dist\html\밀폐공간_환기량_산정_도구_v0.6.html'
 $app = Join-Path $root 'app.py'
-$names = @('core','i18n','navigation','geometry','calculations','fans','platform','reporting','session','init','bootstrap','v05')
+$names = @('core','i18n','navigation','geometry','calculations','fans','platform','reporting','session','profile-display','legal-source-language','init','bootstrap','v05')
 $failures = [System.Collections.Generic.List[string]]::new()
 
 foreach ($name in $names) {

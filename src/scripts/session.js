@@ -99,9 +99,9 @@ function restoreSession(data){
 function saveSessionToFile(){
   const data = serializeSession();
   const jsonStr = JSON.stringify(data, null, 2);
-  const nameSafe = (data.spaceName || '밀폐공간').replace(/[\\/:*?"<>|]/g,'_').trim() || '밀폐공간';
+  const nameSafe = (data.spaceName || 'space').replace(/[\\/:*?"<>|]/g,'_').trim() || 'space';
   const dateSafe = data.savedAt.slice(0,10);
-  const filename = `세션_${nameSafe}_${dateSafe}.json`;
+  const filename = `ventcalc_session_${nameSafe}_${dateSafe}.json`;
   downloadOrSave(filename, jsonStr, 'application/json');
 }
 
@@ -330,18 +330,20 @@ function setV04SupplementalPrintLanguage(code,checked){
   renderTranslatedReports();
 }
 function v04SupplementalLanguageLabel(code,fallback){
-  try{return new Intl.DisplayNames([localeV04For(currentUiLanguage)],{type:'language'}).of(localeV04For(code))||fallback;}catch(_){return fallback;}
+  const native=v04LanguageMeta(code)[2]||code;
+  try{return new Intl.DisplayNames([localeV04For(currentUiLanguage)],{type:'language'}).of(localeV04For(code))||native;}catch(_){return native;}
 }
 function renderV04PrintLanguageGrid(){
   const grid=document.getElementById('print-language-grid');
   if(grid){
-    grid.innerHTML=UI_LANGUAGE_META.filter(item=>item[0]!==currentUiLanguage).map(([code,mainLanguageName,native])=>
-      `<label><input type="checkbox" name="print-lang" value="${code}" ${v04SupplementalPrintLanguages.has(code)?'checked':''} onchange="setV04SupplementalPrintLanguage('${code}',this.checked)"><span class="lang-main">${escapeV04(v04SupplementalLanguageLabel(code,mainLanguageName))}</span><span class="lang-native"> · ${native}</span></label>`
-    ).join('');
+    grid.innerHTML=UI_LANGUAGE_META.filter(item=>item[0]!==currentUiLanguage).map(([code,mainLanguageName,native])=>{
+      const localized=v04SupplementalLanguageLabel(code,mainLanguageName);
+      const duplicate=localized.localeCompare(native,localeV04For(currentUiLanguage),{sensitivity:'base'})===0;
+      return `<label><input type="checkbox" name="print-lang" value="${code}" ${v04SupplementalPrintLanguages.has(code)?'checked':''} onchange="setV04SupplementalPrintLanguage('${code}',this.checked)"><span class="lang-main">${escapeV04(localized)}</span>${duplicate?'':`<span class="lang-native"> · ${escapeV04(native)}</span>`}</label>`;
+    }).join('');
   }
-  const meta=v04LanguageMeta(currentUiLanguage);
   const hint=document.querySelector('.language-options > .hint');
-  if(hint)hint.textContent=`① ${meta[2]} = Primary · ☑ +1 page / Additional document`;
+  if(hint)hint.textContent=getUiText(currentUiLanguage)[14];
   const card=document.getElementById('report-card');
   if(card)card.dataset.primaryLang=currentUiLanguage;
 }
@@ -376,11 +378,7 @@ function setPrintPaper(value){
   document.documentElement.dataset.printPaper=v04Paper;
   const note=document.getElementById('paper-support-note');
   if(note){
-    note.textContent=v04Paper==='Letter'
-      ? (currentUiLanguage==='ko'
-          ? 'Letter 레이아웃을 적용합니다. 휴대폰 인쇄창이 A4를 유지하면 인쇄 서비스의 용지 항목에서 US Letter를 직접 선택하십시오.'
-          : 'Letter layout is applied. If the mobile print dialog still shows A4, select US Letter in the print service.')
-      : '';
+    note.textContent=v04Paper==='Letter'?'US Letter · 8.5 × 11 in':'';
   }
 }
 function setV04UnitSystem(value,automatic=false){
@@ -390,9 +388,7 @@ function setV04UnitSystem(value,automatic=false){
   const note=document.getElementById('unit-support-note');
   if(note){
     note.textContent=v04UnitSystem==='us'
-      ? (currentUiLanguage==='ko'
-          ? '결과는 ft³·CFM을 먼저 표시하고 SI를 병기합니다. 치수·장비 입력과 저장 데이터는 SI이며, CFM 장비값은 5단계 변환기를 사용하십시오.'
-          : 'Results show ft³/CFM first with SI in parentheses. Dimension/equipment inputs and saved data remain SI; use the Step 5 converter for CFM equipment data.')
+      ? 'US: ft³ · CFM  /  SI: m³ · m³/h'
       : '';
   }
   if(state.result && state.mode)computeAndRenderStep4();
@@ -404,12 +400,14 @@ function buildV04TranslatedLegalHTML(code){
   const t=v04Terms(code);
   const p=V04_PROFILES[v04Jurisdiction]||V04_PROFILES.kr;
   const sourceLanguage=v05LegalSourceLanguage(v04Jurisdiction);
+  const sourceLocale=localeV04For(sourceLanguage);
+  const sourceDir=['ar','fa','ur'].includes(sourceLanguage)?'rtl':'ltr';
   const rows=d.rows.map(([label,value])=>`<tr><td>${escapeV04(label)}</td><td>${escapeV04(value)}</td></tr>`).join('');
   const links=[[p.source,p.url],...(p.extraSources||[])].filter(x=>x[1]).map(([label,url])=>
-    `<a href="${escapeV04(url)}" target="_blank" rel="noopener noreferrer">${escapeV04(label)}</a>`).join(' · ');
+    `<a lang="${escapeV04(sourceLocale)}" dir="${sourceDir}" href="${escapeV04(url)}" target="_blank" rel="noopener noreferrer">${escapeV04(label)}</a>`).join(' · ');
   return `<h3 class="translated-legal-heading"><span>6</span>${escapeV04(t[3])}</h3>
-    <table class="translated-legal-table" lang="${escapeV04(localeV04For(sourceLanguage))}"><tbody>${rows}<tr><td>${escapeV04(t[1])}</td><td>${escapeV04(d.clauses)}</td></tr></tbody></table>
-    <div class="translated-legal-source"><b>${escapeV04(v05LegalSourceLabel(code))}</b><br>${links}<br>${escapeV04(t[4])}</div>`;
+    <table class="translated-legal-table" lang="${escapeV04(sourceLocale)}" dir="${sourceDir}"><tbody>${rows}</tbody></table>
+    <div class="translated-legal-source"><b>${escapeV04(v05LegalSourceLabel(code))}</b><br><span lang="${escapeV04(sourceLocale)}" dir="${sourceDir}">${escapeV04(d.clauses)}</span><br>${links}<br>${escapeV04(t[4])}</div>`;
 }
 function applyV04PlanningHints(){
   const mult=document.getElementById('a-multiplier')?.closest('.field');
@@ -433,13 +431,8 @@ function applyV04PlanningHints(){
   [mult,ach].forEach(field=>{const opt=field?.querySelector('label .opt');if(opt)opt.textContent=term;});
   const multHint=mult?.querySelector(':scope > .hint');
   const achHint=ach?.querySelector(':scope > .hint');
-  const english=currentUiLanguage!=='ko';
-  if(multHint)multHint.textContent=english
-    ? 'Enter the site-approved initial purge multiplier. This profile does not treat 10× as a universal statutory value.'
-    : '사업장 위험성평가·공학기준으로 승인한 최초 퍼지 배수를 입력하십시오. 이 프로필에서 10배는 보편적인 법정 고정값이 아닙니다.';
-  if(achHint)achHint.textContent=english
-    ? 'Enter the site-approved continuous air-change rate. Verify safe conditions by atmospheric testing and monitoring.'
-    : '사업장 위험성평가·공학기준으로 승인한 연속 환기횟수를 입력하십시오. 안전조건은 대기 시험·감시로 확인해야 합니다.';
+  if(multHint)multHint.textContent=`${term} · ×`;
+  if(achHint)achHint.textContent=`${term} · ACH`;
 }
 function scrollV04StepIntoView(n){
   if(!v04StepScrollReady)return;
@@ -477,8 +470,10 @@ function setJurisdictionProfile(value){
   if(note) note.textContent=`${v05ProfileDisplayName(v04Jurisdiction) } — ${terms[4]}`;
   const src=document.getElementById('profile-source');
   if(src){
+    const sourceLanguage=v05LegalSourceLanguage(v04Jurisdiction),sourceLocale=localeV04For(sourceLanguage);
+    const sourceDir=['ar','fa','ur'].includes(sourceLanguage)?'rtl':'ltr';
     const links=[[p.source,p.url],...(p.extraSources||[])].filter(x=>x[1]).map(([label,url])=>
-      `<a href="${escapeV04(url)}" target="_blank" rel="noopener noreferrer">${escapeV04(label)}</a>`).join(' · ');
+      `<a lang="${escapeV04(sourceLocale)}" dir="${sourceDir}" href="${escapeV04(url)}" target="_blank" rel="noopener noreferrer">${escapeV04(label)}</a>`).join(' · ');
     src.innerHTML=`<b>${escapeV04(terms[1])}:</b> ${links} <span>· ${escapeV04(p.reviewedAt||'—')} · ${escapeV04(terms[4])}</span>`;
   }
   applyV04PlanningHints();
@@ -656,7 +651,7 @@ function buildV04ReferenceHTML(mode){
 function updateV04ScreenReferencePanel(){
   const panel=document.querySelector('details.ref-panel');
   if(!panel)return;
-  if(v04Jurisdiction==='kr'){
+  if(v04Jurisdiction==='kr'&&currentUiLanguage==='ko'){
     if(v04KoreanReferencePanelHTML&&panel.dataset.profile!=='kr'){
       panel.innerHTML=v04KoreanReferencePanelHTML;
       panel.dataset.profile='kr';
@@ -665,7 +660,8 @@ function updateV04ScreenReferencePanel(){
     return;
   }
   const p=V04_PROFILES[v04Jurisdiction];
-  const title=`📋 ${v04Terms()[3]} — ${p.label}`;
+  const profileName=v05ProfileDisplayName(v04Jurisdiction,currentUiLanguage);
+  const title=`📋 ${v04Terms()[3]} — ${profileName}`;
   const translated=PRINT_I18N[currentUiLanguage]||PRINT_I18N.en;
   const screenChecks=currentUiLanguage==='ko'
     ? buildV04PermitChecklistHTML()
@@ -675,7 +671,7 @@ function updateV04ScreenReferencePanel(){
     : buildV04TranslatedLegalHTML(currentUiLanguage);
   panel.dataset.profile=v04Jurisdiction;
   panel.innerHTML=`<summary>${title}</summary><div class="ref-panel-body">
-    <div class="note"><b>${escapeV04(p.label)}</b><br>${escapeV04(v04Terms()[4])}</div>
+    <div class="note"><b>${escapeV04(profileName)}</b><br>${escapeV04(v04Terms()[4])}</div>
     ${screenChecks}
     ${references}
   </div>`;
@@ -703,14 +699,16 @@ function showV04Validation(items){
 }
 function validateV04Calculation(){
   const bad=[];
-  const positive=(id,label)=>{const el=document.getElementById(id),n=Number(el?.value);if(!Number.isFinite(n)||n<=0)bad.push(label);};
+  const full=getFullUiText();
+  const numeric=value=>typeof parseV05Number==='function'?parseV05Number(value):Number(value);
+  const positive=(id,label)=>{const el=document.getElementById(id),n=numeric(el?.value);if(!Number.isFinite(n)||n<=0)bad.push(label);};
   if(!state.mode) bad.push(getUiText()[5][0]);
-  if(!Number.isFinite(state.volume)||state.volume<=0) bad.push((getFullUiText().volumeResult||'Space volume'));
-  if(state.mode==='A'){positive('a-multiplier','Initial purge multiplier');positive('a-ach','Continuous ACH');}
-  if(state.mode==='B'){positive('b-w','W');positive('b-m','M');positive('b-tlv','Exposure limit');positive('b-k','K');}
+  if(!Number.isFinite(state.volume)||state.volume<=0) bad.push(full.volumeResult||PRINT_I18N[currentUiLanguage]?.l?.volume||'V');
+  if(state.mode==='A'){positive('a-multiplier',full.aMultiplier);positive('a-ach',full.aAch);}
+  if(state.mode==='B'){positive('b-w',full.bW);positive('b-m',full.bM);positive('b-tlv',full.bTlv);positive('b-k',full.bK);}
   if(state.mode==='C'){
-    positive('c-q','Q');positive('c-t','t');positive('c-callow','Exposure limit');positive('c-k','K');
-    ['c-c0','c-ct'].forEach(id=>{const n=Number(document.getElementById(id)?.value);if(!Number.isFinite(n)||n<0)bad.push(id==='c-c0'?'C0':'C(t)');});
+    positive('c-q',full.cQ);positive('c-t',full.cT);positive('c-callow',full.cCallow);positive('c-k',full.cK);
+    ['c-c0','c-ct'].forEach(id=>{const n=numeric(document.getElementById(id)?.value);if(!Number.isFinite(n)||n<0)bad.push(id==='c-c0'?full.cC0:full.cCt);});
   }
   showV04Validation(bad);
   return bad.length===0;
@@ -795,11 +793,13 @@ function updateV04PrintMeta(){
     const terms=v04Terms(code);
     const ui=V04_UI[code]||V04_UI.en;
     const dateLabel=PRINT_I18N[code]?.l?.date||terms[6];
+    const sourceLanguage=v05LegalSourceLanguage(v04Jurisdiction),sourceLocale=localeV04For(sourceLanguage);
+    const sourceDir=['ar','fa','ur'].includes(sourceLanguage)?'rtl':'ltr';
     const companyMeta=ref?`<div><span>${escapeV04(ui[1])}</span><br><b>${escapeV04(ref)}</b></div>`:'';
     const sourceLink=p.url
-      ? `<a href="${escapeV04(p.url)}" target="_blank" rel="noopener noreferrer">${escapeV04(p.source)}</a>`
-      : escapeV04(p.source);
-    const markup=`<div class="global-print-meta"><div><span>${escapeV04(ui[0])}</span><br><b>${escapeV04(p.label)}</b></div>${companyMeta}<div><span>${escapeV04(terms[1])}</span><br><b>${sourceLink}</b></div><div><span>${escapeV04(dateLabel)} / ${escapeV04(ui[2])}</span><br><b>${escapeV04(formatV04DateFor(code))} · ${v04Paper} · ${v04UnitSystem==='us'?'US + SI':'SI'}</b></div><p class="global-profile-guidance"><b>${escapeV04(terms[2])}:</b> ${escapeV04(terms[4])}</p></div>`;
+      ? `<a lang="${escapeV04(sourceLocale)}" dir="${sourceDir}" href="${escapeV04(p.url)}" target="_blank" rel="noopener noreferrer">${escapeV04(p.source)}</a>`
+      : `<span lang="${escapeV04(sourceLocale)}" dir="${sourceDir}">${escapeV04(p.source)}</span>`;
+    const markup=`<div class="global-print-meta"><div><span>${escapeV04(ui[0])}</span><br><b>${escapeV04(v05ProfileDisplayName(v04Jurisdiction,code))}</b></div>${companyMeta}<div><span>${escapeV04(v05LegalSourceLabel(code))}</span><br><b>${sourceLink}</b></div><div><span>${escapeV04(dateLabel)} / ${escapeV04(ui[2])}</span><br><b>${escapeV04(formatV04DateFor(code))} · ${v04Paper} · ${v04UnitSystem==='us'?'US + SI':'SI'}</b></div><p class="global-profile-guidance"><b>${escapeV04(terms[2])}:</b> ${escapeV04(terms[4])}</p></div>`;
     container.querySelector(':scope > .global-print-meta')?.remove();
     container.insertAdjacentHTML('afterbegin',markup);
   });
@@ -927,7 +927,7 @@ renderTranslatedReports=function(){
     const code=section.dataset.language;
     section.classList.toggle('primary-translated-report',currentUiLanguage!=='ko'&&code===currentUiLanguage);
     const disclaimer=section.querySelector('.translated-disclaimer');
-    if(disclaimer&&PRINT_I18N[code]?.safety)disclaimer.textContent=PRINT_I18N[code].safety;
+    if(disclaimer&&PRINT_I18N[code]?.disclaimer)disclaimer.textContent=PRINT_I18N[code].disclaimer;
     section.querySelector('.translated-legal-heading')?.remove();
     section.querySelector('.translated-legal-table')?.remove();
     section.querySelector('.translated-legal-source')?.remove();

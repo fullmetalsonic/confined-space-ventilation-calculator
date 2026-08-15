@@ -44,7 +44,12 @@ function toggleInfo(btn){
   let container = btn.parentElement; // <label> 또는 <p> 등 버튼을 감싸는 요소
   let box = container ? container.nextElementSibling : null;
   while(box && !box.classList.contains('info-box')) box = box.nextElementSibling;
-  if(box) box.hidden = !box.hidden;
+  if(box){
+    box.hidden = !box.hidden;
+    if(!box.id)box.id=`info-box-${Array.from(document.querySelectorAll('.info-box')).indexOf(box)+1}`;
+    btn.setAttribute('aria-controls',box.id);
+    btn.setAttribute('aria-expanded',String(!box.hidden));
+  }
 }
 
 /* ============================================================

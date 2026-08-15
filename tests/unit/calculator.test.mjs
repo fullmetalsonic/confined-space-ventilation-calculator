@@ -46,6 +46,9 @@ test("initial screen loads without runtime errors", async () => {
   assert.equal(document.querySelector('meta[property="og:title"]')?.content, "밀폐공간 환기량 산정 · 송배풍기 매칭 도구 — v0.6");
   assert.equal(document.querySelectorAll(".choice").length, 3);
   assert.equal(document.querySelectorAll("#stepper li").length, 6);
+  assert.match(document.querySelector('#jurisdiction-profile option[value="kr"]').textContent, /대한민국/);
+  assert.equal(document.querySelector("#ui-language").getAttribute("aria-label"), "화면 언어");
+  assert.equal(document.querySelector(".credit").textContent.trim(), "H.S.H");
   assert.deepEqual(errors, []);
   dom.window.close();
 });
@@ -165,8 +168,10 @@ test("blower matching, report rendering, and invalid-input blocking work", async
 
 test("print layout prioritizes one A4 page through four blowers and permits row-level overflow after that", async () => {
   const css = await readFile(PRINT_CSS, "utf8");
+  const appCss = await readFile(SOURCE_CSS, "utf8");
   assert.match(css, /\[data-v05-print-layout="one-page"\] \.print-redundant-summary\{display:none;\}/);
   assert.match(css, /\.report-source-table,\s*\n\s*\[data-v05-print-layout\] \.report-equipment-table\{break-inside:auto!important;page-break-inside:auto!important;\}/);
+  assert.doesNotMatch(appCss, /translated-signature-table/);
 
   const { dom, document, window, errors } = await loadApp();
   window.selectMode("A");
@@ -211,10 +216,117 @@ test("language switching preserves supplemental documents and separates UI from 
   window.renderReport();
   const japanese = document.querySelector('.translated-report[data-language="ja"]');
   assert.ok(japanese, `rendered: ${Array.from(document.querySelectorAll('.translated-report'), section => section.dataset.language).join(',')}`);
-  const traceSource = await readFile(new URL("../../src/scripts/v05.js", import.meta.url), "utf8");
-  assert.match(traceSource, /UI language/);
-  assert.match(traceSource, /Document language/);
-  assert.match(traceSource, /v05TraceHTML\(container\.dataset\.language\|\|currentUiLanguage\)/);
+  assert.match(japanese.querySelector('.translated-title').textContent, /Japanese.*日本語|日本語.*Japanese/);
+  assert.doesNotMatch(japanese.textContent, /PRE-WORK VENTILATION REVIEW/);
+  assert.equal(japanese.querySelector('.translated-disclaimer').textContent, window.getUiText('ja')[4]);
+  assert.equal(japanese.querySelectorAll('.v05-print-trace > div').length, 4);
+  assert.deepEqual(
+    Array.from(japanese.querySelectorAll('.v05-print-trace b'), node=>node.textContent),
+    ['v0.6',window.V04_UI?.ja?.[0]||'安全基準プロファイル',window.v04Terms('ja')[0],window.PRINT_I18N?.ja?.l?.date||'作成日']
+  );
+  assert.deepEqual(errors, []);
+  dom.window.close();
+});
+
+test("supplementary-language choices use the active UI language plus each native name", async () => {
+  const { dom, document, window, errors } = await loadApp();
+  const languages = Array.from(document.querySelector("#ui-language").options, option => option.value);
+  for (const main of languages) {
+    window.setUiLanguage(main);
+    assert.equal(document.querySelector('.language-options > .hint').textContent, window.getUiText(main)[14]);
+    for (const target of languages.filter(code=>code!==main)) {
+      const label=document.querySelector(`#print-language-grid input[value="${target}"]`)?.closest('label');
+      assert.ok(label, `${main} -> ${target}`);
+      const native=window.v04LanguageMeta(target)[2];
+      const localized=new Intl.DisplayNames([window.localeV04For(main)],{type:'language'}).of(window.localeV04For(target));
+      assert.match(label.textContent, new RegExp(localized.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i'), `${main} -> ${target}: localized`);
+      if(localized.localeCompare(native,window.localeV04For(main),{sensitivity:'base'})!==0){
+        assert.ok(label.textContent.includes(native), `${main} -> ${target}: native`);
+      }
+    }
+  }
+  assert.deepEqual(errors, []);
+  dom.window.close();
+});
+
+test("a foreign primary report can add Korean and a third language without signature fields", async () => {
+  const { dom, document, window, errors } = await loadApp();
+  window.setUiLanguage("ja");
+  window.setJurisdictionProfile("jp");
+  window.selectMode("A");
+  setValue(window, document.querySelector('input[type="number"]'), 100);
+  window.computeAndRenderStep4();
+  window.setV04SupplementalPrintLanguage("ko", true);
+  window.setV04SupplementalPrintLanguage("en", true);
+  window.renderReport();
+  window.renderTranslatedReports();
+
+  const japanese = document.querySelector('.translated-report[data-language="ja"]');
+  const english = document.querySelector('.translated-report[data-language="en"]');
+  const korean = document.querySelector('.korean-supplement-report[data-language="ko"]');
+  assert.ok(japanese?.classList.contains("primary-translated-report"));
+  assert.ok(english);
+  assert.ok(korean);
+  assert.equal(document.querySelectorAll(".translated-report").length, 2);
+  assert.equal(document.querySelectorAll(".korean-supplement-report").length, 1);
+  assert.equal(document.querySelectorAll(".sig-table,.translated-signature-table").length, 0);
+  for (const report of [japanese, english, korean]) {
+    assert.equal(report.querySelectorAll(":scope > .v05-print-trace > div").length, 4);
+  }
+  assert.deepEqual(errors, []);
+  dom.window.close();
+});
+
+test("all core screen controls use the active language without stale Korean placeholders", async () => {
+  const { dom, document, window, errors } = await loadApp();
+  const languages = Array.from(document.querySelector("#ui-language").options, option => option.value);
+  for(const language of languages){
+    window.setUiLanguage(language);
+    const core=window.getUiText(language),profile=window.v04Terms(language);
+    assert.equal(document.querySelector('header h1').textContent,core[0],language);
+    assert.equal(document.querySelector('.ui-language-label').textContent,`🌐 ${core[2]}`,language);
+    assert.equal(JSON.stringify(Array.from(document.querySelectorAll('#stepper li'),item=>item.textContent.replace(/^\d+/,'').trim())),JSON.stringify(core[5]),language);
+    assert.ok(document.querySelector('.session-bar .field > label').textContent.trim().startsWith(core[9]),language);
+    assert.equal(document.querySelector('.session-actions button').textContent.trim(),core[10],language);
+    assert.ok(document.querySelector('.session-actions label.btn').textContent.trim().startsWith(core[11]),language);
+    const referenceSummary=document.querySelector('.ref-panel > summary').textContent;
+    assert.ok(referenceSummary.includes(profile[3])||referenceSummary.includes(core[12]),language);
+    assert.equal(document.querySelector('.language-options > summary').textContent,`🌐 ${core[13]}`,language);
+    assert.equal(document.querySelector('.language-options > .hint').textContent,core[14],language);
+    assert.equal(document.querySelector('#profile-label').textContent,document.querySelector('#jurisdiction-profile').getAttribute('aria-label'),language);
+    if(language!=='ko'){
+      assert.doesNotMatch(document.querySelector('#profile-reference').placeholder,/예:/,language);
+      assert.doesNotMatch(document.querySelector('#worker-count').placeholder,/예:/,language);
+      assert.doesNotMatch(document.querySelector('.session-bar').textContent,/선택|저장된 공간|이 공간/,language);
+      assert.doesNotMatch(document.querySelector('#fan-1-name').value,/[가-힣]/,`${language}: starter equipment name`);
+    }
+  }
+  assert.deepEqual(errors, []);
+  dom.window.close();
+});
+
+test("non-Korean UI states contain no accidental Korean or retired English chrome", async () => {
+  const { dom, document, window, errors } = await loadApp();
+  const languages = Array.from(document.querySelector("#ui-language").options, option => option.value).filter(code => code !== "ko");
+  const retiredChrome = /Recommended document setup|Current settings stay unchanged|Screen language|Legal profile|Review baseline|Restore draft|Delete draft|Produced by|VENTILATION PLANNING/;
+
+  for (const language of languages) {
+    window.setUiLanguage(language);
+    window.setJurisdictionProfile("us-general");
+    window.selectMode("A");
+
+    const clone = document.body.cloneNode(true);
+    clone.querySelectorAll("#ui-language,.language-options,#report-card,script,style").forEach(node => node.remove());
+    const attributeText = Array.from(clone.querySelectorAll("*"), element =>
+      ["placeholder", "aria-label", "data-label", "title"].map(name => element.getAttribute(name) || "").join(" ") +
+      (element.matches("input,textarea") ? ` ${element.value}` : "")
+    ).join(" ");
+    const visibleUi = `${clone.textContent} ${attributeText}`;
+
+    assert.doesNotMatch(visibleUi, /[가-힣]/, `${language}: accidental Korean UI text`);
+    assert.doesNotMatch(visibleUi, retiredChrome, `${language}: retired English UI chrome`);
+  }
+
   assert.deepEqual(errors, []);
   dom.window.close();
 });
@@ -282,6 +394,39 @@ test("profile recommendations and date format apply their visible document setti
   dom.window.close();
 });
 
+test("validation and generated controls remain localized and labelled in every UI language", async () => {
+  const { dom, document, window, errors } = await loadApp();
+  const languages = Array.from(document.querySelector("#ui-language").options, option => option.value);
+  for(const language of languages){
+    window.setUiLanguage(language);
+    for(const mode of ['A','B','C']){
+      window.selectMode(mode);
+      window.validateV04Calculation();
+      const text=document.querySelector('#validation-summary').textContent;
+      assert.ok(text.includes(window.getFullUiText(language).volumeResult),`${language}/${mode}: localized volume`);
+      assert.doesNotMatch(text,/0\+/,`${language}/${mode}: stray validation suffix`);
+    }
+  }
+
+  window.setUiLanguage('de');
+  window.selectMode('A');
+  const volume=document.querySelector('#zones-list input[data-v05-numeric="true"]');
+  setValue(window,volume,'1,5');
+  setValue(window,document.querySelector('#a-multiplier'),'1,5');
+  setValue(window,document.querySelector('#a-ach'),'1,5');
+  assert.equal(window.validateV04Calculation(),true,'comma decimal validation');
+
+  window.setUiLanguage('ja');
+  window.addFanRow('検証用',1000,75,false);
+  const generatedControls=document.querySelectorAll('#zones-list input,#zones-list select,#fan-tbody input,#fan-tbody select');
+  for(const control of generatedControls){
+    const labelled=Boolean(control.getAttribute('aria-label')||(control.id&&document.querySelector(`label[for="${control.id}"]`))||control.closest('label'));
+    assert.equal(labelled,true,control.outerHTML);
+  }
+  assert.deepEqual(errors, []);
+  dom.window.close();
+});
+
 test("translated report output and measurement reliability warnings render without errors", async () => {
   const { dom, document, window, errors } = await loadApp();
   window.selectMode("C");
@@ -303,6 +448,13 @@ test("translated report output and measurement reliability warnings render witho
   assert.equal(document.querySelectorAll(".translated-report").length, printLanguages.length);
   assert.equal(document.querySelectorAll(".sig-table").length, 0);
   assert.ok(document.querySelectorAll(".translated-legal-table").length >= 1);
+  for (const report of document.querySelectorAll('.translated-report')) {
+    const code=report.dataset.language;
+    assert.equal(report.querySelector('.translated-disclaimer').textContent, window.getUiText(code)[4], code);
+    assert.match(report.querySelector('.translated-title').textContent, new RegExp(window.v05ProfileLanguageName(code).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i'), code);
+    assert.doesNotMatch(report.textContent,/PRE-WORK VENTILATION REVIEW/,code);
+    assert.equal(report.querySelectorAll('.v05-print-trace > div').length,4,code);
+  }
   for (const table of document.querySelectorAll(".translated-legal-table")) assert.equal(table.lang, "ko");
   window.setJurisdictionProfile("jp");
   window.renderTranslatedReports();
@@ -372,7 +524,7 @@ test("file saving and printing select the correct browser, desktop, and Android 
   window.selectMode("A");
   setValue(window, document.querySelector('input[type="number"]'), 10);
   window.saveSessionToFile();
-  assert.match(downloads.at(-2)[0], /^세션_밀폐공간_\d{4}-\d{2}-\d{2}\.json$/);
+  assert.match(downloads.at(-2)[0], /^ventcalc_session_space_\d{4}-\d{2}-\d{2}\.json$/);
   assert.deepEqual(errors, []);
   dom.window.close();
 });
@@ -384,7 +536,7 @@ test("fan export and validated import update the equipment table", async () => {
   window.updateFan(1, "name", "검수 팬");
   window.updateFan(1, "rated", 1200);
   window.exportFans();
-  assert.equal(saved[0].filename, "송배풍기_목록.json");
+  assert.equal(saved[0].filename, "ventcalc_blowers.json");
   assert.match(saved[0].content, /검수 팬/);
   const imported = [{ name: "불러온 팬", rated: 800, eff: 80, qty: 2, flowMethod: "measured", appliedFlow: 700 }];
   class FakeReader {
@@ -405,6 +557,9 @@ test("mobile report layout and every language-profile-method state stay renderab
   assert.match(mobileRules, /\.permit-checklist\{grid-template-columns:1fr;gap:8px;\}/);
   assert.match(mobileRules, /\.permit-subcheck\{grid-template-columns:1fr;gap:2px;\}/);
   assert.match(mobileRules, /\.report-source-table tbody tr,\.report-source-table td\{height:auto;min-height:0;\}/);
+  assert.match(css,/\.stepper\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\);overflow:visible/);
+  assert.match(css,/@media\(min-width:721px\) and \(max-width:980px\)\{\s*\.global-profile\{grid-template-columns:minmax\(0,1fr\) minmax\(0,1fr\);\}/);
+  assert.doesNotMatch(css,/content:"VENTILATION PLANNING"/);
 
   const { dom, document, window, errors } = await loadApp();
   const languages = Array.from(document.querySelector("#ui-language").options, option => option.value);
@@ -416,11 +571,17 @@ test("mobile report layout and every language-profile-method state stay renderab
     window.selectMode(mode);
     for (const language of languages) {
       window.setUiLanguage(language);
+      assert.equal(document.querySelector('#ui-language').getAttribute('aria-label'),window.getUiText(language)[2],language);
+      assert.equal(document.querySelector('.language-options > .hint').textContent,window.getUiText(language)[14],language);
+      assert.match(document.querySelector('label[for="date-format"]').textContent,/YYYY\/MM\/DD/,language);
       for (const profile of profiles) {
         window.setJurisdictionProfile(profile);
+        assert.equal(document.querySelector('#jurisdiction-profile option:checked').textContent,window.v05ProfileDisplayName(profile,language),`${mode}/${language}/${profile}: profile`);
+        for(const link of document.querySelectorAll('#profile-source a'))assert.ok(link.lang,`${mode}/${language}/${profile}: source language`);
         window.renderReport();
         assert.equal(document.querySelectorAll("#report-body .permit-check").length, 4);
         assert.equal(document.querySelectorAll(".sig-table").length, 0);
+        assert.equal(document.querySelectorAll('.report > .v05-print-trace > div').length,4,`${mode}/${language}/${profile}: trace`);
         const referenceRows = document.querySelectorAll("#report-body .report-source-table tbody tr");
         assert.ok(referenceRows.length >= 6);
         for (const row of referenceRows) {

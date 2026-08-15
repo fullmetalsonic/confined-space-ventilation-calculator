@@ -151,8 +151,55 @@ function getFullUiText(code=currentUiLanguage){
   return UI_FULL_I18N[code] || UI_FULL_I18N.en;
 }
 /* FULL_UI_I18N_END */
+const UI_SUPPLEMENTAL_HINT_I18N={
+  ko:'현재 화면 언어가 기본 결과서이며, 선택한 추가 언어마다 별도 1페이지가 추가됩니다.',
+  en:'The current UI language is the primary report; each selected supplementary language adds a separate page.',
+  zh:'当前界面语言为主报告语言；每选择一种附加语言，都会新增一页。',
+  zht:'目前介面語言為主要報告語言；每選擇一種附加語言，會新增一頁。',
+  ja:'現在の画面言語が基本結果書になります。選択した追加言語ごとに別の1ページが追加されます。',
+  vi:'Ngôn ngữ giao diện hiện tại là báo cáo chính; mỗi ngôn ngữ bổ sung được chọn sẽ thêm một trang riêng.',
+  th:'ภาษาหน้าจอปัจจุบันเป็นรายงานหลัก และแต่ละภาษาเพิ่มเติมที่เลือกจะเพิ่มอีกหนึ่งหน้าแยกต่างหาก',
+  id:'Bahasa antarmuka saat ini menjadi laporan utama; setiap bahasa tambahan yang dipilih menambah satu halaman terpisah.',
+  ms:'Bahasa antara muka semasa ialah laporan utama; setiap bahasa tambahan yang dipilih menambah satu halaman berasingan.',
+  hi:'वर्तमान इंटरफ़ेस भाषा मुख्य रिपोर्ट होगी; चुनी गई प्रत्येक अतिरिक्त भाषा के लिए एक अलग पृष्ठ जोड़ा जाएगा।',
+  bn:'বর্তমান ইন্টারফেসের ভাষাই প্রধান প্রতিবেদন; নির্বাচিত প্রতিটি অতিরিক্ত ভাষার জন্য আলাদা একটি পৃষ্ঠা যোগ হবে।',
+  fil:'Ang kasalukuyang wika ng interface ang pangunahing ulat; bawat napiling karagdagang wika ay nagdaragdag ng hiwalay na pahina.',
+  my:'လက်ရှိ မျက်နှာပြင်ဘာသာစကားသည် အဓိကအစီရင်ခံစာဖြစ်ပြီး ရွေးချယ်သည့် အပိုဘာသာစကားတစ်ခုစီအတွက် သီးခြားစာမျက်နှာတစ်မျက်နှာ ထပ်တိုးပါမည်။',
+  km:'ភាសាចំណុចប្រទាក់បច្ចុប្បន្នជារបាយការណ៍ចម្បង ហើយភាសាបន្ថែមនីមួយៗដែលបានជ្រើសនឹងបន្ថែមមួយទំព័រដាច់ដោយឡែក។',
+  mn:'Одоогийн дэлгэцийн хэл үндсэн тайлан болно. Сонгосон нэмэлт хэл бүр тусдаа нэг хуудас нэмнэ.',
+  es:'El idioma actual de la interfaz será el informe principal; cada idioma adicional seleccionado añadirá una página separada.',
+  pt:'O idioma atual da interface será o relatório principal; cada idioma adicional selecionado acrescentará uma página separada.',
+  ar:'لغة الواجهة الحالية هي لغة التقرير الرئيسي؛ وتضيف كل لغة إضافية محددة صفحة مستقلة.',
+  fa:'زبان فعلی رابط، زبان گزارش اصلی است؛ هر زبان تکمیلی انتخاب‌شده یک صفحه جداگانه اضافه می‌کند.',
+  ur:'موجودہ انٹرفیس زبان بنیادی رپورٹ ہوگی؛ منتخب کردہ ہر اضافی زبان کے لیے ایک الگ صفحہ شامل ہوگا۔',
+  ru:'Текущий язык интерфейса используется для основного отчета; каждый выбранный дополнительный язык добавляет отдельную страницу.',
+  uk:'Поточна мова інтерфейсу використовується для основного звіту; кожна вибрана додаткова мова додає окрему сторінку.',
+  pl:'Bieżący język interfejsu jest językiem raportu głównego; każdy wybrany język dodatkowy dodaje osobną stronę.',
+  tr:'Geçerli arayüz dili ana rapor dilidir; seçilen her ek dil ayrı bir sayfa ekler.',
+  de:'Die aktuelle UI-Sprache ist die Sprache des Hauptberichts; jede ausgewählte Zusatzsprache fügt eine eigene Seite hinzu.',
+  fr:'La langue actuelle de l’interface est celle du rapport principal ; chaque langue supplémentaire sélectionnée ajoute une page distincte.',
+  it:'La lingua corrente dell’interfaccia è quella del rapporto principale; ogni lingua aggiuntiva selezionata aggiunge una pagina separata.',
+  cs:'Aktuální jazyk rozhraní je jazykem hlavní zprávy; každý vybraný doplňkový jazyk přidá samostatnou stránku.',
+  ro:'Limba curentă a interfeței este limba raportului principal; fiecare limbă suplimentară selectată adaugă o pagină separată.',
+  hu:'A felület aktuális nyelve lesz a fő jelentés nyelve; minden kiválasztott kiegészítő nyelv külön oldalt ad hozzá.',
+  kk:'Ағымдағы интерфейс тілі негізгі есептің тілі болады; таңдалған әрбір қосымша тіл жеке бет қосады.',
+  uz:'Joriy interfeys tili asosiy hisobot tili bo‘ladi; tanlangan har bir qo‘shimcha til alohida sahifa qo‘shadi.'
+};
+const UI_COMPLETE_CORE_LANGS=new Set(['ko','en','zh','zht','ja','vi','th','id','es','pt','ru','de','fr','ar']);
 function getUiText(code=currentUiLanguage){
-  return UI_CORE[code] || UI_CORE[UI_FALLBACK_BY_CODE[code]] || UI_CORE.en;
+  const text=(UI_CORE[code] || UI_CORE[UI_FALLBACK_BY_CODE[code]] || UI_CORE.en).slice();
+  if(!UI_COMPLETE_CORE_LANGS.has(code)){
+    const basic=getUiBasic(code),full=getFullUiText(code);
+    text[1]=APP_VERSION;
+    text[9]=basic.zone;
+    text[10]='↓ JSON';
+    text[11]='↑ JSON';
+    text[12]=`${full.check1Title} · ${full.check2Title}`;
+    text[13]=`${text[2]} · PDF`;
+    text[15]='PDF';
+  }
+  text[14]=UI_SUPPLEMENTAL_HINT_I18N[code]||UI_SUPPLEMENTAL_HINT_I18N.en;
+  return text;
 }
 function uiMsg(ko,en){
   if(currentUiLanguage==='ko') return ko;
@@ -198,12 +245,18 @@ function setFieldUi(inputId, main, opt, hint, info, placeholder){
   if(!field) return;
   const label=field.querySelector(':scope > label');
   setDirectLabelText(label,main);
+  if(label)label.setAttribute('for',inputId);
+  input.setAttribute('aria-label',main);
   const optEl=label?.querySelector('.opt');
   if(optEl && opt!==undefined){rememberUiElement(optEl);optEl.textContent=opt;}
   const hintEl=field.querySelector(':scope > .hint');
   if(hintEl && hint!==undefined){rememberUiElement(hintEl);hintEl.textContent=hint;}
   const infoEl=field.querySelector(':scope > .info-box');
   if(infoEl && info!==undefined){rememberUiElement(infoEl);infoEl.textContent=info;}
+  const descriptions=[];
+  if(hintEl){if(!hintEl.id)hintEl.id=inputId+'-hint';descriptions.push(hintEl.id);}
+  if(infoEl){if(!infoEl.id)infoEl.id=inputId+'-info';descriptions.push(infoEl.id);}
+  if(descriptions.length)input.setAttribute('aria-describedby',descriptions.join(' '));
   if(placeholder!==undefined){
     if(input.dataset.uiOriginalPlaceholder===undefined) input.dataset.uiOriginalPlaceholder=input.placeholder||'';
     input.placeholder=placeholder;
@@ -289,8 +342,12 @@ function setUiLanguage(code){
   const t=getUiText(code);
   document.documentElement.lang=code;
   document.documentElement.dir=['ar','fa','ur'].includes(code)?'rtl':'ltr';
-  const ui=document.getElementById('ui-language'); if(ui) ui.value=code;
+  const ui=document.getElementById('ui-language');
+  if(ui){ui.value=code;ui.setAttribute('aria-label',t[2]);}
   const set=(selector,text)=>{const el=document.querySelector(selector);if(el)el.textContent=text;};
+  set('.skip-link',t[0]);
+  const stepper=document.getElementById('stepper');
+  if(stepper)stepper.setAttribute('aria-label',t[5].join(' · '));
   set('header.app-header h1',t[0]); set('header.app-header p',appVersionText(t[1]));
   document.title = `${t[0]} — ${APP_VERSION}`;
   set('.ui-language-label','🌐 '+t[2]); set('.warn-banner > b','⚠ '+t[3]);
@@ -301,13 +358,14 @@ function setUiLanguage(code){
   if(sessionOpt) sessionOpt.textContent=code==='ko'?'(세션 저장 파일명에 사용, 선택)':'('+getUiBasic(code).optional+')';
   set('.session-actions button',t[10]);
   const spaceInput=document.getElementById('space-name');
-  if(spaceInput) spaceInput.placeholder=code==='ko'?'예: 1호기 정화조 맨홀':'—';
+  if(spaceInput){spaceInput.placeholder=code==='ko'?'예: 1호기 정화조 맨홀':'—';spaceInput.setAttribute('aria-label',t[9]);}
   const profileRef=document.getElementById('profile-reference');
   const profileRefLabel=document.getElementById('profile-reference-label');
-  if(profileRefLabel)profileRefLabel.textContent=v04Terms(code)[2];
+  const profileUi=V04_UI[code]||V04_UI.en;
+  if(profileRefLabel)profileRefLabel.textContent=profileUi[1];
   const profileRefOpt=profileRefLabel?.parentElement?.querySelector('.opt');
   if(profileRefOpt)profileRefOpt.textContent=code==='ko'?'(선택)':'('+getUiBasic(code).optional+')';
-  if(profileRef)profileRef.placeholder=code==='ko'?'예: HSE-CS-01 Rev.4':'—';
+  if(profileRef){profileRef.placeholder=code==='ko'?'예: HSE-CS-01 Rev.4':'—';profileRef.setAttribute('aria-label',profileUi[1]);}
   const load=document.querySelector('.session-actions label.btn'); if(load){
     const input=load.querySelector('input'); load.textContent=t[11]+' '; if(input)load.appendChild(input);
   }
@@ -324,6 +382,21 @@ function setUiLanguage(code){
     }
   });
   applyOperationalUiText();
+  document.querySelectorAll('.field').forEach((field,index)=>{
+    const control=field.querySelector(':scope > input,:scope > select,:scope > textarea');
+    const label=field.querySelector(':scope > label');
+    if(!control||!label)return;
+    if(!control.id)control.id=`field-control-${index+1}`;
+    label.setAttribute('for',control.id);
+    control.setAttribute('aria-label',label.textContent.replace('ⓘ','').trim());
+  });
+  document.querySelectorAll('.info-toggle').forEach((btn,index)=>{
+    const box=btn.parentElement?.nextElementSibling;
+    const label=btn.parentElement?.textContent?.replace('ⓘ','').trim()||t[3];
+    btn.setAttribute('aria-label',label);
+    btn.setAttribute('aria-expanded',String(Boolean(box&&!box.hidden)));
+    if(box){if(!box.id)box.id=`field-info-${index+1}`;btn.setAttribute('aria-controls',box.id);}
+  });
   renderStepper();
   if(state.zones.length) renderZones();
   if(state.mode) renderStep3();
