@@ -400,12 +400,13 @@ function buildV04TranslatedLegalHTML(code){
   const d=V04_LEGAL_DATA[v04Jurisdiction]||V04_LEGAL_DATA.kr;
   const t=v04Terms(code);
   const p=V04_PROFILES[v04Jurisdiction]||V04_PROFILES.kr;
+  const sourceLanguage=v05LegalSourceLanguage(v04Jurisdiction);
   const rows=d.rows.map(([label,value])=>`<tr><td>${escapeV04(label)}</td><td>${escapeV04(value)}</td></tr>`).join('');
   const links=[[p.source,p.url],...(p.extraSources||[])].filter(x=>x[1]).map(([label,url])=>
     `<a href="${escapeV04(url)}" target="_blank" rel="noopener noreferrer">${escapeV04(label)}</a>`).join(' · ');
   return `<h3 class="translated-legal-heading"><span>6</span>${escapeV04(t[3])}</h3>
-    <table class="translated-legal-table"><tbody>${rows}<tr><td>${escapeV04(t[1])}</td><td>${escapeV04(d.clauses)}</td></tr></tbody></table>
-    <div class="translated-legal-source">${links}<br>${escapeV04(t[4])}</div>`;
+    <table class="translated-legal-table" lang="${escapeV04(localeV04For(sourceLanguage))}"><tbody>${rows}<tr><td>${escapeV04(t[1])}</td><td>${escapeV04(d.clauses)}</td></tr></tbody></table>
+    <div class="translated-legal-source"><b>${escapeV04(v05LegalSourceLabel(code))}</b><br>${links}<br>${escapeV04(t[4])}</div>`;
 }
 function applyV04PlanningHints(){
   const mult=document.getElementById('a-multiplier')?.closest('.field');

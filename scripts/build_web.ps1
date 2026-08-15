@@ -23,7 +23,7 @@ $v05StyleLink = '<link rel="stylesheet" href="styles/v05.css">'
 if (-not $html.Contains($v05StyleLink)) { throw 'src/index.html에서 v0.5 스타일 링크를 찾지 못했습니다.' }
 $html = $html.Replace($v05StyleLink, "<style id=`"global-v05-operations`">`n$v05Css`n</style>")
 
-$names = @('core','i18n','navigation','geometry','calculations','fans','platform','reporting','session','profile-display','init','bootstrap','v05')
+$names = @('core','i18n','navigation','geometry','calculations','fans','platform','reporting','session','profile-display','legal-source-language','init','bootstrap','v05')
 foreach ($name in $names) {
     $tag = '<script src="scripts/' + $name + '.js"></script>'
     if (-not $html.Contains($tag)) { throw "스크립트 태그가 없습니다: $name" }

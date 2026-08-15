@@ -303,6 +303,10 @@ test("translated report output and measurement reliability warnings render witho
   assert.equal(document.querySelectorAll(".translated-report").length, printLanguages.length);
   assert.equal(document.querySelectorAll(".sig-table").length, 0);
   assert.ok(document.querySelectorAll(".translated-legal-table").length >= 1);
+  for (const table of document.querySelectorAll(".translated-legal-table")) assert.equal(table.lang, "ko");
+  window.setJurisdictionProfile("jp");
+  window.renderTranslatedReports();
+  for (const table of document.querySelectorAll(".translated-legal-table")) assert.equal(table.lang, "ja");
   assert.deepEqual(errors, []);
   dom.window.close();
 });
