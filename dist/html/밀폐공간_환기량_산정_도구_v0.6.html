@@ -4599,7 +4599,7 @@ function setV04SupplementalPrintLanguage(code,checked){
   renderTranslatedReports();
 }
 function v04SupplementalLanguageLabel(code,fallback){
-  try{return new Intl.DisplayNames([localeV04For(currentUiLanguage)],{type:'language'}).of(code)||fallback;}catch(_){return fallback;}
+  try{return new Intl.DisplayNames([localeV04For(currentUiLanguage)],{type:'language'}).of(localeV04For(code))||fallback;}catch(_){return fallback;}
 }
 function renderV04PrintLanguageGrid(){
   const grid=document.getElementById('print-language-grid');
