@@ -14,6 +14,8 @@ function renderStepper(){
     li.onclick = ()=>{ if(n <= state.step || canJump(n)) goStep(n); };
     ul.appendChild(li);
   });
+  /* On narrow screens the step strip scrolls horizontally; keep the active target reachable. */
+  ul.querySelector('.active')?.scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});
 }
 function canJump(n){
   // 이전에 필요한 최소 조건이 채워졌으면 자유 이동 허용

@@ -273,7 +273,8 @@ function applyOperationalUiText(){
 }
 function initializeLanguageControls(){
   const ui = document.getElementById('ui-language');
-  ui.innerHTML = UI_LANGUAGE_META.map(([code,ko,native])=>`<option value="${code}">${ko} / ${native}</option>`).join('');
+  /* A screen-language selector must not introduce a second language into the active UI. */
+  ui.innerHTML = UI_LANGUAGE_META.map(([code,,native])=>`<option value="${code}">${native}</option>`).join('');
   const grid = document.getElementById('print-language-grid');
   grid.innerHTML = UI_LANGUAGE_META.filter(x=>x[0]!=='ko').map(([code,ko,native])=>
     `<label><input type="checkbox" name="print-lang" value="${code}" onchange="renderTranslatedReports()"><span><span class="lang-ko">${ko}</span> <span class="lang-native">(${native})</span></span></label>`

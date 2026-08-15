@@ -2940,7 +2940,8 @@ function applyOperationalUiText(){
 }
 function initializeLanguageControls(){
   const ui = document.getElementById('ui-language');
-  ui.innerHTML = UI_LANGUAGE_META.map(([code,ko,native])=>`<option value="${code}">${ko} / ${native}</option>`).join('');
+  /* A screen-language selector must not introduce a second language into the active UI. */
+  ui.innerHTML = UI_LANGUAGE_META.map(([code,,native])=>`<option value="${code}">${native}</option>`).join('');
   const grid = document.getElementById('print-language-grid');
   grid.innerHTML = UI_LANGUAGE_META.filter(x=>x[0]!=='ko').map(([code,ko,native])=>
     `<label><input type="checkbox" name="print-lang" value="${code}" onchange="renderTranslatedReports()"><span><span class="lang-ko">${ko}</span> <span class="lang-native">(${native})</span></span></label>`
@@ -3013,6 +3014,8 @@ function renderStepper(){
     li.onclick = ()=>{ if(n <= state.step || canJump(n)) goStep(n); };
     ul.appendChild(li);
   });
+  /* On narrow screens the step strip scrolls horizontally; keep the active target reachable. */
+  ul.querySelector('.active')?.scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});
 }
 function canJump(n){
   // 이전에 필요한 최소 조건이 채워졌으면 자유 이동 허용
@@ -5314,7 +5317,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
   .v05-print-trace div{padding:5px 7px;border-right:1px solid #d7e5eb;border-bottom:1px solid #d7e5eb;overflow-wrap:anywhere;}.v05-print-trace b{display:block;color:#075985;font-size:8px;text-transform:uppercase;letter-spacing:.03em;}
   :root[dir="rtl"] .metric .value,:root[dir="rtl"] .unit,:root[dir="rtl"] .v05-ltr,:root[dir="rtl"] time,:root[dir="rtl"] input[type="number"],:root[dir="rtl"] input[inputmode="decimal"]{direction:ltr;unicode-bidi:isolate;}
   :root[dir="rtl"] .v05-print-trace{direction:rtl;}:root[dir="rtl"] .v05-print-trace .v05-ltr{direction:ltr;text-align:left;}
-  @media (max-width:720px){.v05-profile-governance dl{grid-template-columns:max-content minmax(0,1fr);gap:3px 9px;}.v05-regional-preference{grid-template-columns:1fr;gap:8px;}.v05-regional-values{justify-content:flex-start;}.v05-regional-preference button{width:100%;}.v05-print-trace{grid-template-columns:1fr 1fr;}.v05-recovery-bar{align-items:stretch;}.v05-recovery-bar button{min-height:40px;}}
+  @media (max-width:720px){
+    header.app-header{overflow-x:clip;}
+    .header-tools,.ui-language-control{min-width:0;max-width:100%;}
+    .ui-language-control select{max-width:100%;}
+    .stepper{scroll-snap-type:x mandatory;scroll-padding-inline:12px;}
+    .stepper li{scroll-snap-align:center;}
+    .v05-profile-governance dl{grid-template-columns:max-content minmax(0,1fr);gap:3px 9px;}.v05-regional-preference{grid-template-columns:1fr;gap:8px;}.v05-regional-values{justify-content:flex-start;}.v05-regional-preference button{width:100%;}.v05-print-trace{grid-template-columns:1fr 1fr;}.v05-recovery-bar{align-items:stretch;}.v05-recovery-bar button{min-height:40px;}
+  }
   @media print{
     .v05-recovery-bar,.v05-runtime-notice{display:none!important;}.v05-print-trace{font-size:8.5px;}.v05-print-trace div{padding:4px 5px;}
     /* Compact print layout is the default: blower count must not create an avoidable second page. */
@@ -5362,6 +5372,7 @@ let v05LastDraftAt='';
 
 function v05IsKorean(){return currentUiLanguage==='ko';}
 function v05Text(ko,en){return v05IsKorean()?ko:en;}
+function v05Terms(){return v04Terms(currentUiLanguage);}
 function v05ProfilePreferences(p=v05Profile()){return {paper:p?.regionalPreferences?.paper==='Letter'?'Letter':'A4',resultUnit:p?.regionalPreferences?.resultUnit==='us'?'us':'si',inputUnit:p?.regionalPreferences?.inputUnit==='us'?'us':'si',dateFormat:['locale','ymd','dmy','mdy'].includes(p?.regionalPreferences?.dateFormat)?p.regionalPreferences.dateFormat:'locale'};}
 function v05ApprovalText(p=v05Profile()){
   return p?.approvalStatus==='local-ehs-approved'
@@ -5383,7 +5394,7 @@ formatV04Date=function(date=new Date()){return v05FormatDate(date,currentUiLangu
 function setV05DateFormat(value,automatic=false){
   v05DateFormat=['locale','ymd','dmy','mdy'].includes(value)?value:'locale';
   const select=document.getElementById('date-format');if(select)select.value=v05DateFormat;
-  const note=document.getElementById('date-format-note');if(note)note.textContent=v05Text('표시·인쇄 날짜 형식: ','Display and print date format: ')+v05FormatDate(new Date(),currentUiLanguage);
+  const note=document.getElementById('date-format-note');if(note)note.textContent=v05Terms()[6]+': '+v05FormatDate(new Date(),currentUiLanguage);
   if(state.step===6)renderReport();
 }
 function parseV05Number(value){
@@ -5428,26 +5439,17 @@ function v05ProfileSelect(){
 }
 function v05RenderProfileGovernance(){
   const p=v05Profile(), source=document.getElementById('profile-source');if(!source)return;
-  const languageLabel=(UI_LANGUAGE_META.find(item=>item[0]===currentUiLanguage)||[])[1]||currentUiLanguage;
+  const languageLabel=v05ProfileLanguageName(currentUiLanguage);
   const languageMismatch=!(V05_PROFILE_LANGUAGES[v04Jurisdiction]||[]).includes(currentUiLanguage);
   const links=[[p.source,p.url],...(p.extraSources||[])].filter(item=>item[1]).map(([label,url])=>`<a href="${escapeV04(url)}" target="_blank" rel="noopener noreferrer">${escapeV04(label)}</a>`).join(' · ');
+  const t=v05Terms(), profileName=v05ProfileDisplayName(v04Jurisdiction,currentUiLanguage);
   const warning=(v04Jurisdiction==='unverified'||languageMismatch)
-    ? `<div class="v05-profile-warning">${escapeV04(v04Jurisdiction==='unverified'
-      ? v05Text('현지 법규 프로필 미검증 — 회사 절차 및 현지 EHS 검토 필수','Local legal profile is unverified — company procedure and local EHS review are mandatory.')
-      : v05Text(`화면 언어(${languageLabel})는 법규를 자동 선택하지 않습니다. 현재 적용 법규 프로필: ${p.scope}.`,`The screen language (${languageLabel}) does not select law. Active legal profile: ${p.scope}.`))}</div>`:'';
-  const pref=v05ProfilePreferences(p);
-  const approval=v05ApprovalText(p);
-  const dateLabel={locale:v05Text('화면 언어','Screen'),ymd:'YYYY.MM.DD',dmy:'DD/MM/YYYY',mdy:'MM/DD/YYYY'}[pref.dateFormat]||pref.dateFormat;
-  const prefItems=[[v05Text('용지','Paper'),pref.paper],[v05Text('결과','Results'),pref.resultUnit==='us'?'US + SI':'SI'],[v05Text('입력','Input'),pref.inputUnit==='us'?'ft / CFM':'SI'],[v05Text('날짜','Date'),dateLabel]].map(([label,value])=>`<span><em>${escapeV04(label)}</em><b class="v05-ltr">${escapeV04(value)}</b></span>`).join('');
+    ? `<div class="v05-profile-warning">${escapeV04(t[2])}: ${escapeV04(languageLabel)} · ${escapeV04(v05ProfileCountryName(v04Jurisdiction,currentUiLanguage))}</div>`:'';
   source.innerHTML=`${warning}<div class="v05-profile-governance"><dl>
-    <dt>${v05Text('프로필 범위','Profile scope')}</dt><dd>${escapeV04(p.scope||'—')}</dd>
-    <dt>${v05Text('프로필 버전','Profile version')}</dt><dd class="v05-ltr">${escapeV04(p.profileVersion||'—')}</dd>
-    <dt>${v05Text('법규 검토 기준일','Regulatory review baseline')}</dt><dd class="v05-ltr">${escapeV04(p.reviewedAt||'—')}</dd>
-    <dt>${v05Text('검토자','Reviewer')}</dt><dd>${escapeV04(p.reviewer||'—')}</dd>
-    <dt>${v05Text('다음 검토 예정일','Next review due')}</dt><dd class="v05-ltr">${escapeV04(p.nextReviewDue||'—')}</dd>
-    <dt>${v05Text('현지 승인 상태','Local approval status')}</dt><dd>${escapeV04(approval)}<br><small>${escapeV04(p.approvalNote||'—')}</small></dd>
-    <dt>${v05Text('공식 출처','Official source')}</dt><dd>${links||escapeV04(p.source||'—')}</dd>
-  </dl></div><div class="v05-regional-preference"><div class="v05-regional-heading"><b>${escapeV04(v05Text('문서 출력 설정 추천','Recommended document setup'))}</b><small>${escapeV04(v05Text('현재 설정은 유지됩니다. 필요할 때만 추천을 적용하십시오.','Current settings stay unchanged until you apply this recommendation.'))}</small></div><div class="v05-regional-values">${prefItems}</div><button type="button" onclick="applyV05RegionalRecommendation()">${escapeV04(v05Text('추천 적용','Apply'))}</button></div>`;
+    <dt>${escapeV04(t[2])}</dt><dd>${escapeV04(profileName)}</dd>
+    <dt>v</dt><dd class="v05-ltr">${escapeV04(p.profileVersion||'—')} · ${escapeV04(p.reviewedAt||'—')}</dd>
+    <dt>${escapeV04(t[1])}</dt><dd>${links||escapeV04(p.source||'—')}</dd>
+  </dl><small>${escapeV04(t[4])}</small></div>`;
 }
 const v05SetJurisdictionProfile=setJurisdictionProfile;
 setJurisdictionProfile=function(value){
@@ -5463,15 +5465,19 @@ function applyV05RegionalRecommendation(){
   setPrintPaper(pref.paper);setV04UnitSystem(pref.resultUnit,true);setV05InputUnits(pref.inputUnit,true);setV05DateFormat(pref.dateFormat,true);
   v05RenderProfileGovernance();
 }
+function v05RefreshOperationalLabels(){
+  const t=v05Terms();
+  const input=document.querySelector('label[for="input-unit-system"]');if(input)input.textContent=t[0];
+  const date=document.querySelector('label[for="date-format"]');if(date)date.textContent=t[6];
+  const locale=document.querySelector('#date-format option[value="locale"]');if(locale)locale.textContent=v05ProfileLanguageName(currentUiLanguage);
+}
 const v05SetUiLanguage=setUiLanguage;
-setUiLanguage=function(code){v05SetUiLanguage(code);v05RefreshProfileOptions();v05PrepareNumericInputs();v05RenderProfileGovernance();v05RenderRecoveryStatus();};
+setUiLanguage=function(code){v05SetUiLanguage(code);v05RefreshProfileOptions();v05RefreshOperationalLabels();v05PrepareNumericInputs();v05RenderProfileGovernance();setV05InputUnits(v05InputUnits,true);setV05DateFormat(v05DateFormat,true);v05RenderRecoveryStatus();};
 
 function setV05InputUnits(value,automatic=false){
   v05InputUnits=value==='us'?'us':'si';if(!automatic)v05InputUnitsTouched=true;
   const select=document.getElementById('input-unit-system');if(select)select.value=v05InputUnits;
-  const note=document.getElementById('input-unit-note');if(note)note.textContent=v05InputUnits==='us'
-    ?v05Text('입력값은 ft·ft³·CFM으로 표시되며 내부 계산·저장은 SI로 자동 변환됩니다.','Inputs display ft, ft³ and CFM; calculation and saved data are converted to SI.')
-    :v05Text('입력값·계산·저장은 SI(m·m³·m³/h)입니다.','Inputs, calculation and saved data use SI (m, m³, m³/h).');
+  const note=document.getElementById('input-unit-note');if(note)note.textContent=v05InputUnits==='us'?'ft · ft³ · CFM → SI':'SI · m · m³ · m³/h';
   renderZones();renderFanTable();
 }
 const v05SerializeSession=serializeSession;
@@ -5541,8 +5547,8 @@ sanitizeV04Session=function(data){
 function v05RenderRecoveryStatus(){
   const host=document.getElementById('v05-recovery-bar');if(!host)return;
   const draft=safeV04StorageGet(V05_AUTOSAVE_KEY);let saved='';try{saved=draft?JSON.parse(draft).draftSavedAt||'':'';}catch(_){saved='';}
-  const when=saved?formatV04DateFor(currentUiLanguage,new Date(saved))+' '+new Intl.DateTimeFormat(localeV04For(currentUiLanguage),{hour:'2-digit',minute:'2-digit'}).format(new Date(saved)):v05Text('저장된 임시본 없음','No draft saved');
-  host.innerHTML=`<span class="status">${escapeV04(v05Text('기기 내부 임시저장','Device-local draft'))}</span><span class="muted">${escapeV04(v05Text('서버 전송 없음 · 마지막 저장: ','No server transfer · Last saved: '))}<span class="v05-ltr">${escapeV04(when)}</span></span>${saved?`<button type="button" onclick="restoreV05Draft()">${escapeV04(v05Text('임시본 복원','Restore draft'))}</button><button type="button" onclick="clearV05Draft()">${escapeV04(v05Text('임시본 삭제','Delete draft'))}</button>`:''}`;
+  const when=saved?formatV04DateFor(currentUiLanguage,new Date(saved))+' '+new Intl.DateTimeFormat(localeV04For(currentUiLanguage),{hour:'2-digit',minute:'2-digit'}).format(new Date(saved)):'';
+  host.innerHTML=saved?`<span class="status">${escapeV04(v05Terms()[6])}</span><span class="muted v05-ltr">${escapeV04(when)}</span><button type="button" onclick="restoreV05Draft()" aria-label="${escapeV04(v05Terms()[2])}">↺</button><button type="button" onclick="clearV05Draft()" aria-label="${escapeV04(v05Terms()[2])}">×</button>`:'';
 }
 function saveV05Draft(){
   try{const data=v05DraftData();if(safeV04StorageSet(V05_AUTOSAVE_KEY,JSON.stringify(data))){v05LastDraftAt=data.draftSavedAt;v05RenderRecoveryStatus();}}
@@ -5578,13 +5584,12 @@ showV04Validation=function(items){
   v05ShowV04Validation(items);
   if(!items?.length)return;
   const box=document.getElementById('validation-summary');if(!box)return;
-  const advice=v05Text('수정 안내: 수치는 0보다 큰 값(농도는 0 이상)을 입력하고, 표시 단위와 측정 시각을 확인하십시오.','Correction: enter a value above zero (concentrations may be zero), then verify the displayed unit and measurement time.');
-  box.insertAdjacentHTML('beforeend',`<p class="hint"><b>${escapeV04(advice)}</b></p>`);
+  box.insertAdjacentHTML('beforeend',`<p class="hint"><b>0+ · ${escapeV04(v05Terms()[0])}</b></p>`);
 };
 
 document.addEventListener('DOMContentLoaded',()=>{
   const profile=document.querySelector('.global-profile');
-  if(profile&&!document.getElementById('input-unit-system'))profile.insertAdjacentHTML('beforeend',`<div class="field"><label for="input-unit-system">${escapeV04(v05Text('물리 입력 단위','Physical input units'))}</label><select id="input-unit-system" onchange="setV05InputUnits(this.value,false)"><option value="si">SI · m / m³ / m³/h</option><option value="us">US · ft / ft³ / CFM</option></select><small id="input-unit-note" class="hint"></small></div><div class="field"><label for="date-format">${escapeV04(v05Text('문서 날짜 형식','Document date format'))}</label><select id="date-format" onchange="setV05DateFormat(this.value,false)"><option value="locale">${escapeV04(v05Text('화면 언어 형식','Screen-language format'))}</option><option value="ymd">YYYY.MM.DD</option><option value="dmy">DD/MM/YYYY</option><option value="mdy">MM/DD/YYYY</option></select><small id="date-format-note" class="hint"></small></div>`);
+  if(profile&&!document.getElementById('input-unit-system')){const t=v05Terms();profile.insertAdjacentHTML('beforeend',`<div class="field"><label for="input-unit-system">${escapeV04(t[0])}</label><select id="input-unit-system" onchange="setV05InputUnits(this.value,false)"><option value="si">SI · m / m³ / m³/h</option><option value="us">US · ft / ft³ / CFM</option></select><small id="input-unit-note" class="hint"></small></div><div class="field"><label for="date-format">${escapeV04(t[6])}</label><select id="date-format" onchange="setV05DateFormat(this.value,false)"><option value="locale">${escapeV04(v05ProfileLanguageName(currentUiLanguage))}</option><option value="ymd">YYYY.MM.DD</option><option value="dmy">DD/MM/YYYY</option><option value="mdy">MM/DD/YYYY</option></select><small id="date-format-note" class="hint"></small></div>`);}
   const session=document.querySelector('.session-bar');if(session&&!document.getElementById('v05-recovery-bar'))session.insertAdjacentHTML('beforebegin',`<div id="v05-recovery-bar" class="v05-recovery-bar no-print" aria-live="polite"></div><div id="v05-runtime-notice" class="v05-runtime-notice no-print" role="alert" hidden></div>`);
   v05ProfileSelect();v05RenderProfileGovernance();v05PrepareNumericInputs();const defaultPref=v05ProfilePreferences();setV05InputUnits(defaultPref.inputUnit,true);setV05DateFormat(defaultPref.dateFormat,true);v05RenderRecoveryStatus();
   document.addEventListener('change',event=>{if(event.target?.matches?.('input[data-v05-numeric="true"],input[type="number"]'))v05NormalizeNumericInput(event.target);scheduleV05Draft();},true);
