@@ -1059,7 +1059,7 @@
       font-size:12px;
     }
     details.ref-panel summary::after{
-      content:"열기";
+      content:"+";
       float:right;
       padding:2px 8px;
       border-radius:999px;
@@ -1068,7 +1068,7 @@
       font-size:9.5px;
       font-weight:800;
     }
-    details.ref-panel[open] summary::after{content:"닫기";}
+    details.ref-panel[open] summary::after{content:"−";}
     .ref-panel-body{padding:10px 20px 22px;}
 
     .shell{

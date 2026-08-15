@@ -302,6 +302,12 @@ function setUiLanguage(code){
   set('.session-actions button',t[10]);
   const spaceInput=document.getElementById('space-name');
   if(spaceInput) spaceInput.placeholder=code==='ko'?'예: 1호기 정화조 맨홀':'—';
+  const profileRef=document.getElementById('profile-reference');
+  const profileRefLabel=document.getElementById('profile-reference-label');
+  if(profileRefLabel)profileRefLabel.textContent=v04Terms(code)[2];
+  const profileRefOpt=profileRefLabel?.parentElement?.querySelector('.opt');
+  if(profileRefOpt)profileRefOpt.textContent=code==='ko'?'(선택)':'('+getUiBasic(code).optional+')';
+  if(profileRef)profileRef.placeholder=code==='ko'?'예: HSE-CS-01 Rev.4':'—';
   const load=document.querySelector('.session-actions label.btn'); if(load){
     const input=load.querySelector('input'); load.textContent=t[11]+' '; if(input)load.appendChild(input);
   }
