@@ -119,7 +119,7 @@ function applyV05RegionalRecommendation(){
   v05RenderProfileGovernance();
 }
 const v05SetUiLanguage=setUiLanguage;
-setUiLanguage=function(code){v05SetUiLanguage(code);v05PrepareNumericInputs();v05RenderProfileGovernance();v05RenderRecoveryStatus();};
+setUiLanguage=function(code){v05SetUiLanguage(code);v05RefreshProfileOptions();v05PrepareNumericInputs();v05RenderProfileGovernance();v05RenderRecoveryStatus();};
 
 function setV05InputUnits(value,automatic=false){
   v05InputUnits=value==='us'?'us':'si';if(!automatic)v05InputUnitsTouched=true;
@@ -209,9 +209,9 @@ function clearV05Draft(){try{localStorage.removeItem(V05_AUTOSAVE_KEY);}catch(_)
 function v05ShowRuntimeNotice(message){const box=document.getElementById('v05-runtime-notice');if(box){box.textContent=message;box.hidden=false;}}
 function v05RuntimeRecovery(){try{saveV05Draft();}catch(_){}v05ShowRuntimeNotice(v05Text('일시적인 오류가 발생했습니다. 입력값은 기기에 보관을 시도했습니다. 새로고침 후 임시본 또는 세션 파일로 복원하십시오.','A temporary error occurred. The app attempted to preserve input on this device. Refresh and restore the draft or a session file.'));}
 
-function v05TraceHTML(){
+function v05TraceHTML(documentLanguage=currentUiLanguage){
   const p=v05Profile(),now=new Date(),unit=v04UnitSystem==='us'?'US customary + SI':'SI',input=v05InputUnits==='us'?'ft / ft³ / CFM':'m / m³ / m³/h';
-  return `<div class="v05-print-trace"><div><b>Tool</b><span class="v05-ltr">${V05_VERSION}</span></div><div><b>Legal profile</b>${escapeV04(p.label)} <span class="v05-ltr">v${escapeV04(p.profileVersion||'—')}</span></div><div><b>Approval</b>${escapeV04(v05ApprovalText(p))}</div><div><b>Review baseline</b><span class="v05-ltr">${escapeV04(p.reviewedAt||'Unverified')}</span></div><div><b>Screen language</b>${escapeV04((UI_LANGUAGE_META.find(item=>item[0]===currentUiLanguage)||[])[1]||currentUiLanguage)}</div><div><b>Units</b><span class="v05-ltr">${unit}; input ${input}</span></div><div><b>Generated</b><time class="v05-ltr">${escapeV04(now.toISOString().replace('T',' ').slice(0,19)+' UTC')}</time></div></div>`;
+  return `<div class="v05-print-trace"><div><b>Tool</b><span class="v05-ltr">${V05_VERSION}</span></div><div><b>Legal profile</b>${escapeV04(v05ProfileDisplayName(v04Jurisdiction,documentLanguage))} <span class="v05-ltr">v${escapeV04(p.profileVersion||'—')}</span></div><div><b>Approval</b>${escapeV04(v05ApprovalText(p))}</div><div><b>Review baseline</b><span class="v05-ltr">${escapeV04(p.reviewedAt||'Unverified')}</span></div><div><b>UI language</b>${escapeV04(v05ProfileLanguageName(currentUiLanguage))}</div><div><b>Document language</b>${escapeV04(v05ProfileLanguageName(documentLanguage))}</div><div><b>Units</b><span class="v05-ltr">${unit}; input ${input}</span></div><div><b>Generated</b><time class="v05-ltr">${escapeV04(now.toISOString().replace('T',' ').slice(0,19)+' UTC')}</time></div></div>`;
 }
 function v05AddTrace(container){
   if(!container)return;
@@ -220,7 +220,7 @@ function v05AddTrace(container){
   container.dataset.v05FanCount=String(fanCount);
   container.dataset.v05PrintLayout=fanCount<=4?'one-page':'multi-page';
   container.querySelectorAll?.('.v05-print-trace').forEach(node=>node.remove());
-  container.insertAdjacentHTML('afterbegin',v05TraceHTML());
+  container.insertAdjacentHTML('afterbegin',v05TraceHTML(container.dataset.language||currentUiLanguage));
 }
 const v05RenderReport=renderReport;
 renderReport=function(){v05RenderReport();v05AddTrace(document.querySelector('.report'));};

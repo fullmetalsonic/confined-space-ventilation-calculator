@@ -4588,16 +4588,15 @@ function setV04SupplementalPrintLanguage(code,checked){
   renderTranslatedReports();
 }
 function renderV04PrintLanguageGrid(){
-  v04SupplementalPrintLanguages.delete(currentUiLanguage);
   const grid=document.getElementById('print-language-grid');
   if(grid){
-    grid.innerHTML=UI_LANGUAGE_META.filter(item=>item[0]!==currentUiLanguage).map(([code,ko,native])=>
-      `<label><input type="checkbox" name="print-lang" value="${code}" ${v04SupplementalPrintLanguages.has(code)?'checked':''} onchange="setV04SupplementalPrintLanguage('${code}',this.checked)"><span><span class="lang-ko">${ko}</span> <span class="lang-native">(${native})</span></span></label>`
+    grid.innerHTML=UI_LANGUAGE_META.filter(item=>item[0]!==currentUiLanguage).map(([code,,native])=>
+      `<label><input type="checkbox" name="print-lang" value="${code}" ${v04SupplementalPrintLanguages.has(code)?'checked':''} onchange="setV04SupplementalPrintLanguage('${code}',this.checked)"><span class="lang-native">${native}</span></label>`
     ).join('');
   }
   const meta=v04LanguageMeta(currentUiLanguage);
   const hint=document.querySelector('.language-options > .hint');
-  if(hint)hint.textContent=`① ${meta[1]} / ${meta[2]} = Primary · 기본 결과서  ·  ☑ +1 page / 추가 언어`;
+  if(hint)hint.textContent=`① ${meta[2]} = Primary · ☑ +1 page / Additional document`;
   const card=document.getElementById('report-card');
   if(card)card.dataset.primaryLang=currentUiLanguage;
 }
@@ -4729,7 +4728,7 @@ function setJurisdictionProfile(value){
   }
   const terms=v04Terms();
   const note=document.getElementById('profile-note');
-  if(note) note.textContent=`${p.label} — ${terms[4]}`;
+  if(note) note.textContent=`${v05ProfileDisplayName(v04Jurisdiction) } — ${terms[4]}`;
   const src=document.getElementById('profile-source');
   if(src){
     const links=[[p.source,p.url],...(p.extraSources||[])].filter(x=>x[1]).map(([label,url])=>
@@ -4737,6 +4736,7 @@ function setJurisdictionProfile(value){
     src.innerHTML=`<b>${escapeV04(terms[1])}:</b> ${links} <span>· ${escapeV04(p.reviewedAt||'—')} · ${escapeV04(terms[4])}</span>`;
   }
   applyV04PlanningHints();
+  if(typeof v05RefreshProfileOptions==='function')v05RefreshProfileOptions();
   updateV04ScreenReferencePanel();
   updateV04PrintMeta();
   if(state.step===6&&state.result)renderReport();
@@ -5241,6 +5241,26 @@ document.addEventListener('DOMContentLoaded',()=>{
 ============================================================ */
 </script>
   <script>
+/* Localized presentation only: official rule titles and source names stay verbatim. */
+const V05_PROFILE_COUNTRIES={kr:'KR','us-general':'US','us-construction':'US',uk:'GB',au:'AU',sg:'SG',jp:'JP',br:'BR'};
+function v05ProfileLanguageName(code=currentUiLanguage){return v04LanguageMeta(code)[2]||code;}
+function v05ProfileCountryName(profileCode,code=currentUiLanguage){
+  if(profileCode==='unverified')return code==='ko'?'미검증 관할':'Unverified jurisdiction';
+  const region=V05_PROFILE_COUNTRIES[profileCode];
+  try{return new Intl.DisplayNames([localeV04For(code)],{type:'region'}).of(region)||region;}catch(_){return region||profileCode;}
+}
+function v05ProfileDisplayName(profileCode=v04Jurisdiction,code=currentUiLanguage){
+  const profile=V04_PROFILES[profileCode]||V04_PROFILES.unverified;
+  const official=String(profile.label||profileCode).split(' · ').slice(1).join(' · ')||profile.label||profileCode;
+  return `${v05ProfileCountryName(profileCode,code)} · ${official}`;
+}
+function v05RefreshProfileOptions(){
+  const select=document.getElementById('jurisdiction-profile');if(!select)return;
+  [...select.options].forEach(option=>{option.textContent=v05ProfileDisplayName(option.value);});
+  select.value=v04Jurisdiction;
+}
+</script>
+  <script>
 function initGuidanceAccordion(){
   const grid = document.querySelector('.guidance-grid');
   if(!grid) return;
@@ -5434,7 +5454,7 @@ function applyV05RegionalRecommendation(){
   v05RenderProfileGovernance();
 }
 const v05SetUiLanguage=setUiLanguage;
-setUiLanguage=function(code){v05SetUiLanguage(code);v05PrepareNumericInputs();v05RenderProfileGovernance();v05RenderRecoveryStatus();};
+setUiLanguage=function(code){v05SetUiLanguage(code);v05RefreshProfileOptions();v05PrepareNumericInputs();v05RenderProfileGovernance();v05RenderRecoveryStatus();};
 
 function setV05InputUnits(value,automatic=false){
   v05InputUnits=value==='us'?'us':'si';if(!automatic)v05InputUnitsTouched=true;
@@ -5524,9 +5544,9 @@ function clearV05Draft(){try{localStorage.removeItem(V05_AUTOSAVE_KEY);}catch(_)
 function v05ShowRuntimeNotice(message){const box=document.getElementById('v05-runtime-notice');if(box){box.textContent=message;box.hidden=false;}}
 function v05RuntimeRecovery(){try{saveV05Draft();}catch(_){}v05ShowRuntimeNotice(v05Text('일시적인 오류가 발생했습니다. 입력값은 기기에 보관을 시도했습니다. 새로고침 후 임시본 또는 세션 파일로 복원하십시오.','A temporary error occurred. The app attempted to preserve input on this device. Refresh and restore the draft or a session file.'));}
 
-function v05TraceHTML(){
+function v05TraceHTML(documentLanguage=currentUiLanguage){
   const p=v05Profile(),now=new Date(),unit=v04UnitSystem==='us'?'US customary + SI':'SI',input=v05InputUnits==='us'?'ft / ft³ / CFM':'m / m³ / m³/h';
-  return `<div class="v05-print-trace"><div><b>Tool</b><span class="v05-ltr">${V05_VERSION}</span></div><div><b>Legal profile</b>${escapeV04(p.label)} <span class="v05-ltr">v${escapeV04(p.profileVersion||'—')}</span></div><div><b>Approval</b>${escapeV04(v05ApprovalText(p))}</div><div><b>Review baseline</b><span class="v05-ltr">${escapeV04(p.reviewedAt||'Unverified')}</span></div><div><b>Screen language</b>${escapeV04((UI_LANGUAGE_META.find(item=>item[0]===currentUiLanguage)||[])[1]||currentUiLanguage)}</div><div><b>Units</b><span class="v05-ltr">${unit}; input ${input}</span></div><div><b>Generated</b><time class="v05-ltr">${escapeV04(now.toISOString().replace('T',' ').slice(0,19)+' UTC')}</time></div></div>`;
+  return `<div class="v05-print-trace"><div><b>Tool</b><span class="v05-ltr">${V05_VERSION}</span></div><div><b>Legal profile</b>${escapeV04(v05ProfileDisplayName(v04Jurisdiction,documentLanguage))} <span class="v05-ltr">v${escapeV04(p.profileVersion||'—')}</span></div><div><b>Approval</b>${escapeV04(v05ApprovalText(p))}</div><div><b>Review baseline</b><span class="v05-ltr">${escapeV04(p.reviewedAt||'Unverified')}</span></div><div><b>UI language</b>${escapeV04(v05ProfileLanguageName(currentUiLanguage))}</div><div><b>Document language</b>${escapeV04(v05ProfileLanguageName(documentLanguage))}</div><div><b>Units</b><span class="v05-ltr">${unit}; input ${input}</span></div><div><b>Generated</b><time class="v05-ltr">${escapeV04(now.toISOString().replace('T',' ').slice(0,19)+' UTC')}</time></div></div>`;
 }
 function v05AddTrace(container){
   if(!container)return;
@@ -5535,7 +5555,7 @@ function v05AddTrace(container){
   container.dataset.v05FanCount=String(fanCount);
   container.dataset.v05PrintLayout=fanCount<=4?'one-page':'multi-page';
   container.querySelectorAll?.('.v05-print-trace').forEach(node=>node.remove());
-  container.insertAdjacentHTML('afterbegin',v05TraceHTML());
+  container.insertAdjacentHTML('afterbegin',v05TraceHTML(container.dataset.language||currentUiLanguage));
 }
 const v05RenderReport=renderReport;
 renderReport=function(){v05RenderReport();v05AddTrace(document.querySelector('.report'));};

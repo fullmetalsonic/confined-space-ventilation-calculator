@@ -330,16 +330,15 @@ function setV04SupplementalPrintLanguage(code,checked){
   renderTranslatedReports();
 }
 function renderV04PrintLanguageGrid(){
-  v04SupplementalPrintLanguages.delete(currentUiLanguage);
   const grid=document.getElementById('print-language-grid');
   if(grid){
-    grid.innerHTML=UI_LANGUAGE_META.filter(item=>item[0]!==currentUiLanguage).map(([code,ko,native])=>
-      `<label><input type="checkbox" name="print-lang" value="${code}" ${v04SupplementalPrintLanguages.has(code)?'checked':''} onchange="setV04SupplementalPrintLanguage('${code}',this.checked)"><span><span class="lang-ko">${ko}</span> <span class="lang-native">(${native})</span></span></label>`
+    grid.innerHTML=UI_LANGUAGE_META.filter(item=>item[0]!==currentUiLanguage).map(([code,,native])=>
+      `<label><input type="checkbox" name="print-lang" value="${code}" ${v04SupplementalPrintLanguages.has(code)?'checked':''} onchange="setV04SupplementalPrintLanguage('${code}',this.checked)"><span class="lang-native">${native}</span></label>`
     ).join('');
   }
   const meta=v04LanguageMeta(currentUiLanguage);
   const hint=document.querySelector('.language-options > .hint');
-  if(hint)hint.textContent=`① ${meta[1]} / ${meta[2]} = Primary · 기본 결과서  ·  ☑ +1 page / 추가 언어`;
+  if(hint)hint.textContent=`① ${meta[2]} = Primary · ☑ +1 page / Additional document`;
   const card=document.getElementById('report-card');
   if(card)card.dataset.primaryLang=currentUiLanguage;
 }
@@ -471,7 +470,7 @@ function setJurisdictionProfile(value){
   }
   const terms=v04Terms();
   const note=document.getElementById('profile-note');
-  if(note) note.textContent=`${p.label} — ${terms[4]}`;
+  if(note) note.textContent=`${v05ProfileDisplayName(v04Jurisdiction) } — ${terms[4]}`;
   const src=document.getElementById('profile-source');
   if(src){
     const links=[[p.source,p.url],...(p.extraSources||[])].filter(x=>x[1]).map(([label,url])=>
@@ -479,6 +478,7 @@ function setJurisdictionProfile(value){
     src.innerHTML=`<b>${escapeV04(terms[1])}:</b> ${links} <span>· ${escapeV04(p.reviewedAt||'—')} · ${escapeV04(terms[4])}</span>`;
   }
   applyV04PlanningHints();
+  if(typeof v05RefreshProfileOptions==='function')v05RefreshProfileOptions();
   updateV04ScreenReferencePanel();
   updateV04PrintMeta();
   if(state.step===6&&state.result)renderReport();

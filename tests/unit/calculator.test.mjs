@@ -173,6 +173,7 @@ test("print layout prioritizes one A4 page through four blowers and permits row-
   setValue(window, document.querySelector('input[type="number"]'), 100);
   window.computeAndRenderStep4();
   window.renderReport();
+  window.renderTranslatedReports();
   assert.equal(document.querySelector(".report").dataset.v05PrintLayout, "one-page");
   assert.equal(document.querySelector(".report").dataset.v05FanCount, "1");
   assert.equal(document.querySelectorAll(".print-redundant-summary .kv").length, 3);
@@ -188,6 +189,32 @@ test("print layout prioritizes one A4 page through four blowers and permits row-
   window.renderReport();
   assert.equal(document.querySelector(".report").dataset.v05PrintLayout, "multi-page");
   assert.equal(document.querySelector(".report").dataset.v05FanCount, "5");
+  assert.deepEqual(errors, []);
+  dom.window.close();
+});
+
+test("language switching preserves supplemental documents and separates UI from document language", async () => {
+  const { dom, document, window, errors } = await loadApp();
+  window.setUiLanguage("en");
+  assert.doesNotMatch(document.querySelector('#jurisdiction-profile option[value="kr"]').textContent, /대한민국/);
+
+  window.setUiLanguage("ko");
+  window.setV04SupplementalPrintLanguage("en", true);
+  window.setV04SupplementalPrintLanguage("ja", true);
+  window.setUiLanguage("de");
+  assert.deepEqual(new Set(window.serializeSession().printLanguages), new Set(["en", "ja"]));
+
+  window.setUiLanguage("en");
+  window.selectMode("A");
+  setValue(window, document.querySelector('input[type="number"]'), 100);
+  window.computeAndRenderStep4();
+  window.renderReport();
+  const japanese = document.querySelector('.translated-report[data-language="ja"]');
+  assert.ok(japanese, `rendered: ${Array.from(document.querySelectorAll('.translated-report'), section => section.dataset.language).join(',')}`);
+  const traceSource = await readFile(new URL("../../src/scripts/v05.js", import.meta.url), "utf8");
+  assert.match(traceSource, /UI language/);
+  assert.match(traceSource, /Document language/);
+  assert.match(traceSource, /v05TraceHTML\(container\.dataset\.language\|\|currentUiLanguage\)/);
   assert.deepEqual(errors, []);
   dom.window.close();
 });
