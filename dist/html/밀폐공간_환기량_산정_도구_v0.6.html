@@ -981,7 +981,7 @@
     header.app-header h1{
       max-width:1140px;
       margin:0 auto 5px;
-      padding-right:250px;
+      padding-right:380px;
       font-size:24px;
       line-height:1.3;
       letter-spacing:-.035em;
@@ -989,7 +989,7 @@
     header.app-header p{
       max-width:1140px;
       margin:0 auto;
-      padding-right:250px;
+      padding-right:380px;
       font-size:12.5px;
       color:rgba(255,255,255,.78);
     }
@@ -1480,6 +1480,32 @@
       box-shadow:0 4px 12px rgba(35,72,96,.04);
     }
     table.responsive-table td{border-bottom:1px solid #E7EEF2 !important;}
+  }
+
+  @media screen and (min-width:761px) and (max-width:980px){
+    header.app-header h1,
+    header.app-header p{padding-right:0;}
+    .header-tools{
+      position:static;
+      display:flex;
+      flex-direction:row;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      gap:8px;
+      width:100%;
+      max-width:1140px;
+      margin:12px auto 0;
+      top:auto;
+      right:auto;
+    }
+    .header-tools .credit{
+      position:static;
+      display:inline-flex;
+      align-items:center;
+      margin:0;
+      white-space:nowrap;
+    }
   }
 
   @media screen and (max-width:430px){
@@ -2218,7 +2244,7 @@ html{scroll-padding-top:12px;}
       <span class="ui-language-label">🌐 화면 언어</span>
       <select id="ui-language" onchange="setUiLanguage(this.value)" aria-label="화면 언어 선택"></select>
     </label>
-    <span class="credit">H.S.H</span>
+    <span class="credit">Produced by H.S.H</span>
   </div>
 </header>
 <div class="warn-banner">
@@ -5444,6 +5470,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   @media (max-width:720px){
     header.app-header{overflow-x:clip;}
     .header-tools{display:grid;grid-template-columns:minmax(0,1fr);min-width:0;max-width:100%;}
+    .header-tools .credit{justify-self:end;width:auto;max-width:100%;}
     .ui-language-control{min-width:0;max-width:100%;display:grid;grid-template-columns:minmax(0,1fr);}
     .ui-language-control span,.ui-language-control select{min-width:0;width:100%;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
     .stepper{scroll-snap-type:none;scroll-padding-inline:0;}
@@ -5485,6 +5512,9 @@ const V05_VERSION=APP_VERSION;
 const V05_AUTOSAVE_KEY='ventcalc-v05-draft';
 const V05_COMMA_DECIMAL_LANGS=new Set(['fr','de','pt','es','it','ro','hu','pl','tr','cs','ru','uk','kk','uz']);
 const V05_PROFILE_LANGUAGES={kr:['ko'],'us-general':['en','es'],'us-construction':['en','es'],uk:['en'],au:['en'],sg:['en','zh','zht','ms'],jp:['ja'],br:['pt'],unverified:[]};
+const V05_INPUT_UNIT_LABELS={
+  ko:'물리 입력 단위',en:'Physical input units',zh:'输入单位',zht:'輸入單位',ja:'入力単位',vi:'Đơn vị nhập',th:'หน่วยป้อนข้อมูล',id:'Satuan input',ms:'Unit input',hi:'इनपुट इकाइयाँ',bn:'ইনপুট একক',fil:'Yunit ng input',my:'ထည့်သွင်းယူနစ်',km:'ឯកតាបញ្ចូល',mn:'Оролтын нэгж',es:'Unidades de entrada',pt:'Unidades de entrada',ar:'وحدات الإدخال',fa:'واحدهای ورودی',ur:'ان پٹ اکائیاں',ru:'Единицы ввода',uk:'Одиниці введення',pl:'Jednostki wejściowe',tr:'Giriş birimleri',de:'Eingabeeinheiten',fr:'Unités d’entrée',it:'Unità di input',cs:'Vstupní jednotky',ro:'Unități de intrare',hu:'Bemeneti mértékegységek',kk:'Енгізу бірліктері',uz:'Kiritish birliklari'
+};
 const V05_FT_PER_M=3.280839895;
 const V05_CFM_PER_CMH=0.588577779;
 let v05InputUnits='si';
@@ -5495,6 +5525,7 @@ let v05DraftTimer=0;
 let v05LastDraftAt='';
 
 function v05Terms(){return v04Terms(currentUiLanguage);}
+function v05InputUnitLabel(code=currentUiLanguage){return V05_INPUT_UNIT_LABELS[code]||V05_INPUT_UNIT_LABELS.en;}
 function v05ProfilePreferences(p=v05Profile()){return {paper:p?.regionalPreferences?.paper==='Letter'?'Letter':'A4',resultUnit:p?.regionalPreferences?.resultUnit==='us'?'us':'si',inputUnit:p?.regionalPreferences?.inputUnit==='us'?'us':'si',dateFormat:['locale','ymd','dmy','mdy'].includes(p?.regionalPreferences?.dateFormat)?p.regionalPreferences.dateFormat:'locale'};}
 function v05FormatDate(date,code=currentUiLanguage){
   const d=date instanceof Date?date:new Date(date);if(Number.isNaN(d.getTime()))return '—';
@@ -5504,6 +5535,9 @@ function v05FormatDate(date,code=currentUiLanguage){
 }
 const v05BaseFormatDateFor=formatV04DateFor;
 const v05BaseFormatDate=formatV04Date;
+function v05LocaleDateOptionLabel(code=currentUiLanguage){
+  return `${v05ProfileLanguageName(code)} · ${v05BaseFormatDateFor(code,new Date(2026,7,20,12,0,0))}`;
+}
 formatV04DateFor=function(code,date=new Date()){return v05FormatDate(date,code);};
 formatV04Date=function(date=new Date()){return v05FormatDate(date,currentUiLanguage);};
 function setV05DateFormat(value,automatic=false){
@@ -5586,14 +5620,15 @@ function applyV05RegionalRecommendation(){
 function v05RefreshOperationalLabels(){
   const t=v05Terms(),profileUi=V04_UI[currentUiLanguage]||V04_UI.en;
   const dateText=`${PRINT_I18N[currentUiLanguage]?.l?.date||t[6]} · YYYY/MM/DD`;
-  const input=document.querySelector('label[for="input-unit-system"]');if(input)input.textContent=t[0];
-  const inputSelect=document.getElementById('input-unit-system');if(inputSelect)inputSelect.setAttribute('aria-label',t[0]);
+  const inputLabel=v05InputUnitLabel();
+  const input=document.querySelector('label[for="input-unit-system"]');if(input)input.textContent=inputLabel;
+  const inputSelect=document.getElementById('input-unit-system');if(inputSelect)inputSelect.setAttribute('aria-label',inputLabel);
   const resultSelect=document.getElementById('unit-system');if(resultSelect)resultSelect.setAttribute('aria-label',t[0]);
   const date=document.querySelector('label[for="date-format"]');if(date)date.textContent=dateText;
   const dateSelect=document.getElementById('date-format');if(dateSelect)dateSelect.setAttribute('aria-label',dateText);
   const profileSelect=document.getElementById('jurisdiction-profile');if(profileSelect)profileSelect.setAttribute('aria-label',profileUi[0]);
   const paperSelect=document.getElementById('paper-size');if(paperSelect)paperSelect.setAttribute('aria-label',profileUi[2]);
-  const locale=document.querySelector('#date-format option[value="locale"]');if(locale)locale.textContent=v05ProfileLanguageName(currentUiLanguage);
+  const locale=document.querySelector('#date-format option[value="locale"]');if(locale)locale.textContent=v05LocaleDateOptionLabel();
 }
 const v05SetUiLanguage=setUiLanguage;
 setUiLanguage=function(code){v05SetUiLanguage(code);v05RefreshProfileOptions();v05RefreshOperationalLabels();v05PrepareNumericInputs();v05RenderProfileGovernance();setV05InputUnits(v05InputUnits,true);setV05DateFormat(v05DateFormat,true);v05RenderRecoveryStatus();};
@@ -5717,7 +5752,7 @@ showV04Validation=function(items){v05ShowV04Validation(items);};
 
 document.addEventListener('DOMContentLoaded',()=>{
   const profile=document.querySelector('.global-profile');
-  if(profile&&!document.getElementById('input-unit-system')){const t=v05Terms(),dateText=`${PRINT_I18N[currentUiLanguage]?.l?.date||t[6]} · YYYY/MM/DD`;profile.insertAdjacentHTML('beforeend',`<div class="field"><label for="input-unit-system">${escapeV04(t[0])}</label><select id="input-unit-system" aria-label="${escapeV04(t[0])}" onchange="setV05InputUnits(this.value,false)"><option value="si">SI · m / m³ / m³/h</option><option value="us">US · ft / ft³ / CFM</option></select><small id="input-unit-note" class="hint"></small></div><div class="field"><label for="date-format">${escapeV04(dateText)}</label><select id="date-format" aria-label="${escapeV04(dateText)}" onchange="setV05DateFormat(this.value,false)"><option value="locale">${escapeV04(v05ProfileLanguageName(currentUiLanguage))}</option><option value="ymd">YYYY.MM.DD</option><option value="dmy">DD/MM/YYYY</option><option value="mdy">MM/DD/YYYY</option></select><small id="date-format-note" class="hint"></small></div>`);}
+  if(profile&&!document.getElementById('input-unit-system')){const t=v05Terms(),inputLabel=v05InputUnitLabel(),dateText=`${PRINT_I18N[currentUiLanguage]?.l?.date||t[6]} · YYYY/MM/DD`;profile.insertAdjacentHTML('beforeend',`<div class="field"><label for="input-unit-system">${escapeV04(inputLabel)}</label><select id="input-unit-system" aria-label="${escapeV04(inputLabel)}" onchange="setV05InputUnits(this.value,false)"><option value="si">SI · m / m³ / m³/h</option><option value="us">US · ft / ft³ / CFM</option></select><small id="input-unit-note" class="hint"></small></div><div class="field"><label for="date-format">${escapeV04(dateText)}</label><select id="date-format" aria-label="${escapeV04(dateText)}" onchange="setV05DateFormat(this.value,false)"><option value="locale">${escapeV04(v05LocaleDateOptionLabel())}</option><option value="ymd">YYYY.MM.DD</option><option value="dmy">DD/MM/YYYY</option><option value="mdy">MM/DD/YYYY</option></select><small id="date-format-note" class="hint"></small></div>`);}
   const session=document.querySelector('.session-bar');if(session&&!document.getElementById('v05-recovery-bar'))session.insertAdjacentHTML('beforebegin',`<div id="v05-recovery-bar" class="v05-recovery-bar no-print" aria-live="polite"></div><div id="v05-runtime-notice" class="v05-runtime-notice no-print" role="alert" hidden></div>`);
   v05ProfileSelect();v05RefreshProfileOptions();v05RefreshOperationalLabels();v05RenderProfileGovernance();v05PrepareNumericInputs();const defaultPref=v05ProfilePreferences();setV05InputUnits(defaultPref.inputUnit,true);setV05DateFormat(defaultPref.dateFormat,true);v05RenderRecoveryStatus();
   document.addEventListener('change',event=>{if(event.target?.matches?.('input[data-v05-numeric="true"],input[type="number"]'))v05NormalizeNumericInput(event.target);scheduleV05Draft();},true);

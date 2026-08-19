@@ -17,6 +17,7 @@
   @media (max-width:720px){
     header.app-header{overflow-x:clip;}
     .header-tools{display:grid;grid-template-columns:minmax(0,1fr);min-width:0;max-width:100%;}
+    .header-tools .credit{justify-self:end;width:auto;max-width:100%;}
     .ui-language-control{min-width:0;max-width:100%;display:grid;grid-template-columns:minmax(0,1fr);}
     .ui-language-control span,.ui-language-control select{min-width:0;width:100%;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
     .stepper{scroll-snap-type:none;scroll-padding-inline:0;}

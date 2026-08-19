@@ -39,6 +39,15 @@ function setSelect(window, element, value) {
   element.dispatchEvent(new window.Event("change", { bubbles: true }));
 }
 
+async function waitUntil(predicate, timeoutMs = 1000) {
+  const deadline = Date.now() + timeoutMs;
+  while (!predicate()) {
+    if (Date.now() >= deadline) return false;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  return true;
+}
+
 test("initial screen loads without runtime errors", async () => {
   const { dom, document, errors } = await loadApp();
   assert.match(document.querySelector("h1").textContent, /밀폐공간 환기량 산정/);
@@ -48,7 +57,9 @@ test("initial screen loads without runtime errors", async () => {
   assert.equal(document.querySelectorAll("#stepper li").length, 6);
   assert.match(document.querySelector('#jurisdiction-profile option[value="kr"]').textContent, /대한민국/);
   assert.equal(document.querySelector("#ui-language").getAttribute("aria-label"), "화면 언어");
-  assert.equal(document.querySelector(".credit").textContent.trim(), "H.S.H");
+  assert.equal(document.querySelector(".credit").textContent.trim(), "Produced by H.S.H");
+  assert.equal(document.querySelector('label[for="input-unit-system"]').textContent.trim(), "물리 입력 단위");
+  assert.match(document.querySelector('#date-format option[value="locale"]').textContent, /^한국어 · /);
   assert.deepEqual(
     Array.from(document.querySelectorAll("#fan-table thead th"), (cell) => cell.style.width),
     ["14%", "10%", "20%", "10%", "8%", "11%", "9%", "11%", "7%"],
@@ -298,6 +309,8 @@ test("all core screen controls use the active language without stale Korean plac
     assert.equal(document.querySelector('.language-options > summary').textContent,`🌐 ${core[13]}`,language);
     assert.equal(document.querySelector('.language-options > .hint').textContent,core[14],language);
     assert.equal(document.querySelector('#profile-label').textContent,document.querySelector('#jurisdiction-profile').getAttribute('aria-label'),language);
+    assert.notEqual(document.querySelector('label[for="input-unit-system"]').textContent,document.querySelector('label[for="unit-system"]').textContent,language);
+    assert.match(document.querySelector('#date-format option[value="locale"]').textContent,/ · /,language);
     if(language!=='ko'){
       assert.doesNotMatch(document.querySelector('#profile-reference').placeholder,/예:/,language);
       assert.doesNotMatch(document.querySelector('#worker-count').placeholder,/예:/,language);
@@ -312,7 +325,7 @@ test("all core screen controls use the active language without stale Korean plac
 test("non-Korean UI states contain no accidental Korean or retired English chrome", async () => {
   const { dom, document, window, errors } = await loadApp();
   const languages = Array.from(document.querySelector("#ui-language").options, option => option.value).filter(code => code !== "ko");
-  const retiredChrome = /Recommended document setup|Current settings stay unchanged|Screen language|Legal profile|Review baseline|Restore draft|Delete draft|Produced by|VENTILATION PLANNING/;
+  const retiredChrome = /Recommended document setup|Current settings stay unchanged|Screen language|Legal profile|Review baseline|Restore draft|Delete draft|VENTILATION PLANNING/;
 
   for (const language of languages) {
     window.setUiLanguage(language);
@@ -499,8 +512,7 @@ test("file saving and printing select the correct browser, desktop, and Android 
   };
   window.printReport();
   window.downloadOrSave("android.json", "{}", "application/json");
-  await new Promise((resolve) => setTimeout(resolve, 50));
-  assert.ok(calls.includes("android-print"));
+  assert.ok(await waitUntil(() => calls.includes("android-print")));
   assert.ok(calls.some((call) => JSON.stringify(call) === JSON.stringify(["android.json", "{}"])));
   delete window.AndroidBridge;
   const desktopSaves = [];
@@ -515,7 +527,7 @@ test("file saving and printing select the correct browser, desktop, and Android 
   let printCount = 0;
   window.print = () => { printCount += 1; };
   window.printReport();
-  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.ok(await waitUntil(() => printCount === 1));
   assert.equal(printCount, 1);
   const downloads = [];
   window.URL.createObjectURL = () => "blob:test";
