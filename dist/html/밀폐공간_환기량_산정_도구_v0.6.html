@@ -3,16 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="작업 전 최초 급기량·작업 중 유지환기량 산정 및 송배풍기 매칭 도구 v0.6">
+<meta name="description" content="Confined space ventilation calculator for initial purge volume, continuous airflow, and blower matching. 밀폐공간 최초 급기량·유지 환기량 산정 및 송배풍기 매칭 도구.">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="https://fullmetalsonic.github.io/confined-space-ventilation-calculator/">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="밀폐공간 환기량 산정 도구">
-<meta property="og:title" content="밀폐공간 환기량 산정 · 송배풍기 매칭 도구 — v0.6">
-<meta property="og:description" content="작업 전 최초 급기량·작업 중 유지환기량 산정 및 송배풍기 매칭 도구 v0.6">
+<meta property="og:site_name" content="Confined Space Ventilation Calculator | 밀폐공간 환기량 산정 도구">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:title" content="Confined Space Ventilation Calculator | 밀폐공간 환기량 산정">
+<meta property="og:description" content="Plan initial purge volume, continuous ventilation airflow, and blower quantity before confined-space work.">
 <meta property="og:url" content="https://fullmetalsonic.github.io/confined-space-ventilation-calculator/">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="밀폐공간 환기량 산정 · 송배풍기 매칭 도구 — v0.6">
-<meta name="twitter:description" content="작업 전 최초 급기량·작업 중 유지환기량 산정 및 송배풍기 매칭 도구 v0.6">
-<title>밀폐공간 환기량 산정 · 송배풍기 매칭 도구 — v0.6</title>
+<meta name="twitter:title" content="Confined Space Ventilation Calculator | 밀폐공간 환기량 산정">
+<meta name="twitter:description" content="Initial purge, continuous ventilation, and blower matching for confined-space planning.">
+<title>Confined Space Ventilation Calculator | 밀폐공간 환기량 산정</title>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[{"@type":"WebSite","name":"Confined Space Ventilation Calculator","alternateName":"밀폐공간 환기량 산정 도구","url":"https://fullmetalsonic.github.io/confined-space-ventilation-calculator/","inLanguage":["ko","en"]},{"@type":"WebApplication","name":"Confined Space Ventilation Calculator","alternateName":"밀폐공간 환기량 산정 · 송배풍기 매칭 도구","url":"https://fullmetalsonic.github.io/confined-space-ventilation-calculator/","applicationCategory":"BusinessApplication","operatingSystem":"Web browser, Android, Windows","inLanguage":["ko","en"],"description":"A planning calculator for initial purge volume, continuous ventilation airflow, and blower matching before confined-space work. / 밀폐공간 작업 전 최초 급기량, 유지 환기량 및 송배풍기 매칭을 계획하는 계산 도구입니다."}]}
+</script>
 <style>
 :root{
     /* POSCO 공식 CI 색상을 중심으로, 화면은 더 맑고 밝게 보이도록 구성 */
@@ -101,11 +108,15 @@
     align-items:flex-start;
   }
   .warn-banner b{white-space:nowrap;}
-  .shell{
-    max-width:1100px;
-    margin:0 auto;
-    padding:22px 20px 60px;
-  }
+.shell{
+  max-width:1100px;
+  margin:0 auto;
+  padding:22px 20px 60px;
+}
+.site-overview{margin:0 0 14px;padding:14px 16px;border:1px solid var(--line);border-left:4px solid var(--sky);border-radius:var(--radius);background:linear-gradient(135deg,#fff,var(--sky-bg));box-shadow:0 4px 14px rgba(5,80,125,.045);}
+.site-overview h2{margin:0 0 6px;font-size:15px;color:var(--navy);}
+.site-overview p{margin:5px 0;font-size:12px;color:var(--ink-soft);line-height:1.55;}
+.site-overview-link{display:inline-block;margin-top:5px;color:var(--navy);font-size:12px;font-weight:700;}
   details.ref-panel{
     background:var(--sky-bg);
     border-bottom:1px solid var(--line);
@@ -2335,6 +2346,13 @@ html{scroll-padding-top:12px;}
 
 <div class="shell" id="main-content" tabindex="-1">
 
+  <section class="site-overview no-print" aria-labelledby="site-overview-title">
+    <h2 id="site-overview-title">밀폐공간 환기량 산정 / Confined Space Ventilation Planning</h2>
+    <p lang="ko">공간 체적, 작업 조건, 보유 송배풍기 정보를 바탕으로 작업 전 최초 급기량과 작업 중 유지 환기량을 산정하고 장비 대수를 비교합니다. 결과는 작업허가서 첨부용 사전계획 참고자료입니다.</p>
+    <p lang="en">Calculate initial purge volume, continuous ventilation airflow, and planned blower quantity for confined-space work. This is a pre-work planning aid; it never replaces atmospheric testing, a permit, or site procedures.</p>
+    <a href="https://fullmetalsonic.github.io/confined-space-ventilation-calculator/user-guide.html" class="site-overview-link" target="_blank" rel="noopener">빠른 사용 안내 (한국어 / English) →</a>
+  </section>
+
   <section class="global-profile no-print" aria-labelledby="global-profile-title">
     <div class="field">
       <label id="global-profile-title" for="jurisdiction-profile">🌍 <span id="profile-label">안전 기준 프로필</span></label>
@@ -3054,6 +3072,22 @@ function initializeLanguageControls(){
   const saved = safeV04StorageGet('ventcalc-ui-language');
   setUiLanguage(UI_LANGUAGE_META.some(x=>x[0]===saved) ? saved : 'ko');
 }
+function renderSiteOverview(code){
+  const overview=document.querySelector('.site-overview');
+  if(!overview)return;
+  if(code==='ko'){
+    overview.hidden=false;
+    overview.innerHTML='<h2 id="site-overview-title">밀폐공간 환기량 산정</h2><p>공간 체적, 작업 조건, 보유 송배풍기 정보를 바탕으로 작업 전 최초 급기량과 작업 중 유지 환기량을 산정하고 장비 대수를 비교합니다. 결과는 작업허가서 첨부용 사전계획 참고자료입니다.</p><a href="https://fullmetalsonic.github.io/confined-space-ventilation-calculator/user-guide.html" class="site-overview-link" target="_blank" rel="noopener">빠른 사용 안내 (한국어 / English) →</a>';
+    return;
+  }
+  if(code==='en'){
+    overview.hidden=false;
+    overview.innerHTML='<h2 id="site-overview-title">Confined Space Ventilation Planning</h2><p>Calculate initial purge volume, continuous ventilation airflow, and planned blower quantity for confined-space work. This is a pre-work planning aid; it never replaces atmospheric testing, a permit, or site procedures.</p><a href="https://fullmetalsonic.github.io/confined-space-ventilation-calculator/user-guide.html" class="site-overview-link" target="_blank" rel="noopener">Quick guide →</a>';
+    return;
+  }
+  overview.hidden=true;
+  overview.replaceChildren();
+}
 function setUiLanguage(code){
   if(!UI_LANGUAGE_META.some(x=>x[0]===code)) code='ko';
   currentUiLanguage=code;
@@ -3068,7 +3102,10 @@ function setUiLanguage(code){
   const stepper=document.getElementById('stepper');
   if(stepper)stepper.setAttribute('aria-label',t[5].join(' · '));
   set('header.app-header h1',t[0]); set('header.app-header p',appVersionText(t[1]));
-  document.title = `${t[0]} — ${APP_VERSION}`;
+  document.title = code==='ko'
+    ? `Confined Space Ventilation Calculator | 밀폐공간 환기량 산정 — ${APP_VERSION}`
+    : `${t[0]} | Confined Space Ventilation Calculator — ${APP_VERSION}`;
+  renderSiteOverview(code);
   set('.ui-language-label','🌐 '+t[2]); set('.warn-banner > b','⚠ '+t[3]);
   const warning=document.querySelector('.warn-banner > span'); if(warning) warning.textContent=t[4];
   const sessionLabel=document.querySelector('.session-bar .field > label');

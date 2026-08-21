@@ -1,4 +1,9 @@
-# 프로젝트 현재 상태
+# 프로젝트 현재 상태 / Project Status
+
+> **English overview:** This file is a Korean technical status record. The
+> current editable product source is `src/`; generated HTML, desktop, and
+> Android artifacts must be rebuilt and verified after source changes. For the
+> illustrated end-user workflow, see `docs/user-guide.html`.
 
 마지막 정리: 2026-07-31
 

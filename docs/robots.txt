@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://fullmetalsonic.github.io/confined-space-ventilation-calculator/sitemap.xml

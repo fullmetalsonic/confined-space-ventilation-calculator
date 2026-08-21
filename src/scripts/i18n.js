@@ -335,6 +335,22 @@ function initializeLanguageControls(){
   const saved = safeV04StorageGet('ventcalc-ui-language');
   setUiLanguage(UI_LANGUAGE_META.some(x=>x[0]===saved) ? saved : 'ko');
 }
+function renderSiteOverview(code){
+  const overview=document.querySelector('.site-overview');
+  if(!overview)return;
+  if(code==='ko'){
+    overview.hidden=false;
+    overview.innerHTML='<h2 id="site-overview-title">밀폐공간 환기량 산정</h2><p>공간 체적, 작업 조건, 보유 송배풍기 정보를 바탕으로 작업 전 최초 급기량과 작업 중 유지 환기량을 산정하고 장비 대수를 비교합니다. 결과는 작업허가서 첨부용 사전계획 참고자료입니다.</p><a href="https://fullmetalsonic.github.io/confined-space-ventilation-calculator/user-guide.html" class="site-overview-link" target="_blank" rel="noopener">빠른 사용 안내 (한국어 / English) →</a>';
+    return;
+  }
+  if(code==='en'){
+    overview.hidden=false;
+    overview.innerHTML='<h2 id="site-overview-title">Confined Space Ventilation Planning</h2><p>Calculate initial purge volume, continuous ventilation airflow, and planned blower quantity for confined-space work. This is a pre-work planning aid; it never replaces atmospheric testing, a permit, or site procedures.</p><a href="https://fullmetalsonic.github.io/confined-space-ventilation-calculator/user-guide.html" class="site-overview-link" target="_blank" rel="noopener">Quick guide →</a>';
+    return;
+  }
+  overview.hidden=true;
+  overview.replaceChildren();
+}
 function setUiLanguage(code){
   if(!UI_LANGUAGE_META.some(x=>x[0]===code)) code='ko';
   currentUiLanguage=code;
@@ -349,7 +365,10 @@ function setUiLanguage(code){
   const stepper=document.getElementById('stepper');
   if(stepper)stepper.setAttribute('aria-label',t[5].join(' · '));
   set('header.app-header h1',t[0]); set('header.app-header p',appVersionText(t[1]));
-  document.title = `${t[0]} — ${APP_VERSION}`;
+  document.title = code==='ko'
+    ? `Confined Space Ventilation Calculator | 밀폐공간 환기량 산정 — ${APP_VERSION}`
+    : `${t[0]} | Confined Space Ventilation Calculator — ${APP_VERSION}`;
+  renderSiteOverview(code);
   set('.ui-language-label','🌐 '+t[2]); set('.warn-banner > b','⚠ '+t[3]);
   const warning=document.querySelector('.warn-banner > span'); if(warning) warning.textContent=t[4];
   const sessionLabel=document.querySelector('.session-bar .field > label');

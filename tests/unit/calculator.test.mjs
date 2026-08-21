@@ -6,6 +6,7 @@ import { JSDOM, VirtualConsole } from "jsdom";
 const RELEASE = new URL("../../docs/index.html", import.meta.url);
 const SOURCE_CSS = new URL("../../src/styles/app.css", import.meta.url);
 const PRINT_CSS = new URL("../../src/styles/v05.css", import.meta.url);
+const USER_GUIDE = new URL("../../docs/user-guide.html", import.meta.url);
 
 async function loadApp() {
   const html = await readFile(RELEASE, "utf8");
@@ -52,7 +53,7 @@ test("initial screen loads without runtime errors", async () => {
   const { dom, document, errors } = await loadApp();
   assert.match(document.querySelector("h1").textContent, /밀폐공간 환기량 산정/);
   assert.match(document.title, /v0\.6$/);
-  assert.equal(document.querySelector('meta[property="og:title"]')?.content, "밀폐공간 환기량 산정 · 송배풍기 매칭 도구 — v0.6");
+  assert.equal(document.querySelector('meta[property="og:title"]')?.content, "Confined Space Ventilation Calculator | 밀폐공간 환기량 산정");
   assert.equal(document.querySelectorAll(".choice").length, 3);
   assert.equal(document.querySelectorAll("#stepper li").length, 6);
   assert.match(document.querySelector('#jurisdiction-profile option[value="kr"]').textContent, /대한민국/);
@@ -65,6 +66,21 @@ test("initial screen loads without runtime errors", async () => {
     ["14%", "10%", "20%", "10%", "8%", "11%", "9%", "11%", "7%"],
   );
   assert.deepEqual(errors, []);
+  dom.window.close();
+});
+
+test("search metadata and the illustrated bilingual guide are shipped", async () => {
+  const html = await readFile(RELEASE, "utf8");
+  const guide = await readFile(USER_GUIDE, "utf8");
+  const dom = new JSDOM(html);
+  const { document } = dom.window;
+  assert.equal(document.querySelector('link[rel="canonical"]')?.href, "https://fullmetalsonic.github.io/confined-space-ventilation-calculator/");
+  assert.match(document.querySelector('meta[name="description"]')?.content ?? "", /Confined space ventilation calculator/i);
+  const structuredData = JSON.parse(document.querySelector('script[type="application/ld+json"]')?.textContent ?? "{}");
+  assert.deepEqual(structuredData['@graph'].map((entry) => entry['@type']), ["WebSite", "WebApplication"]);
+  assert.match(guide, /Quick Guide/);
+  assert.match(guide, /assets\/calculator-start-ko\.png/);
+  assert.match(guide, /assets\/calculator-start-en\.png/);
   dom.window.close();
 });
 

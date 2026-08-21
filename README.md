@@ -1,23 +1,52 @@
-# 밀폐공간 환기량 산정 도구
+# 밀폐공간 환기량 산정 도구 / Confined Space Ventilation Calculator
 
 Produced by H.S.H
 
 밀폐공간의 최초 급기량·유지 환기량을 계산하고, 보유 송배풍기의 실질풍량과
 필요 대수를 비교하는 오프라인 도구입니다.
 
+An offline planning tool that calculates initial purge volume and continuous
+ventilation airflow, then compares the requirement with available blowers.
+It runs in a browser, Windows application, or Android application.
+
 > 이 도구의 계산값은 설계·계획 참고용입니다. 실제 작업 전·중에는 관계 법령과
 > 사업장 절차에 따라 산소 및 유해가스 농도를 현장에서 실측해야 합니다.
+
+> **Safety note (English):** Calculations are for planning only. Before entry,
+> re-entry, and during work, measure and evaluate oxygen and hazardous gases
+> according to applicable law and the site work-permit procedure.
+
+## 빠른 사용 안내 / Quick user guide
+
+- 공개 도구 / Live tool: <https://fullmetalsonic.github.io/confined-space-ventilation-calculator/>
+- 한·영 화면 캡처 안내 / Bilingual illustrated guide: [docs/user-guide.html](docs/user-guide.html)
 
 ## 가장 쉬운 실행 방법
 
 최신 글로벌판은 `dist/html/밀폐공간_환기량_산정_도구_v0.6.html`입니다.
 더블클릭하면 별도 설치 없이 PC·휴대기기 브라우저에서 오프라인으로 실행됩니다.
 
+## Quick start (English)
+
+Open `dist/html/밀폐공간_환기량_산정_도구_v0.6.html` in a desktop or mobile
+browser. Select the calculation method, enter the space volume and work
+conditions, review the required airflow, then compare available blowers. Use
+the result report only as an attachment to—not a replacement for—the work
+permit and atmospheric measurement record.
+
 v0.6은 v0.5 기능을 유지하면서 CSS와 JavaScript를 기능별로 분리한 유지보수 구조
 개선판입니다. 기존 v0.5 HTML·EXE·APK는 보존되며, 새 EXE·APK는 필요할 때만 v0.6
 HTML을 지정해 다시 빌드합니다.
 
 ## 폴더 구조
+
+## Project layout (English)
+
+`src/` is the editable web source. The single-file HTML in `dist/html/` and
+the embedded HTML in `app.py` are generated artifacts. See
+[`docs/개발_구조_v0.6.md`](docs/개발_구조_v0.6.md) for the bilingual development
+overview and [`docs/user-guide.html`](docs/user-guide.html) for the end-user
+workflow with screenshots.
 
 ```text
 .
