@@ -4292,6 +4292,22 @@ PRINT_LANG_CODES.forEach(code=>{
   PRINT_I18N[code].disclaimer=getUiText(code)[4];
 });
 
+/* The Korean original report has always shown this derived planning value.
+   Keep every translated report at the same information level. */
+const PRINT_INITIAL_PURGE_DURATION_LABELS={
+  en:'Initial purge duration',zh:'初始送风所需时间',zht:'初始送風所需時間',ja:'初期給気所要時間',
+  vi:'Thời gian cấp khí ban đầu',th:'ระยะเวลาการจ่ายอากาศเริ่มต้น',id:'Waktu purge awal',ms:'Tempoh purga awal',
+  hi:'प्रारंभिक शोधन समय',bn:'প্রাথমিক পরিশোধন সময়',fil:'Oras ng paunang purge',my:'ကနဦး လေသွင်းချိန်',
+  km:'រយៈពេលផ្គត់ផ្គង់ខ្យល់ដំបូង',mn:'Анхны агаар үлээлгэх хугацаа',es:'Duración de la purga inicial',pt:'Duração da purga inicial',
+  ar:'مدة التطهير الأولي',fa:'مدت پاکسازی اولیه',ur:'ابتدائی صفائی کا دورانیہ',ru:'Продолжительность начальной продувки',
+  uk:'Тривалість початкового продування',pl:'Czas wstępnego przewietrzania',tr:'İlk süpürme süresi',de:'Dauer der Erstspülung',
+  fr:'Durée de la purge initiale',it:'Durata dello spurgo iniziale',cs:'Doba počátečního proplachu',ro:'Durata purjării inițiale',
+  hu:'Kezdeti átöblítés időtartama',kk:'Алғашқы үрлеу ұзақтығы',uz:'Dastlabki tozalash davomiyligi'
+};
+PRINT_LANG_CODES.forEach(code=>{
+  PRINT_I18N[code].l.initialDuration=PRINT_INITIAL_PURGE_DURATION_LABELS[code]||PRINT_INITIAL_PURGE_DURATION_LABELS.en;
+});
+
 function getSelectedPrintLanguages(){
   return Array.from(document.querySelectorAll('input[name="print-lang"]:checked')).map(el=>el.value);
 }
@@ -4349,7 +4365,9 @@ function renderTranslatedReports(){
     }).join('') || `<tr><td colspan="6">-</td></tr>`;
     let ventilationRows = '';
     if(r.mode==='A'){
-      ventilationRows = `<div class="kv"><div>${t.l.initial}</div><div>${Number(r.initial||0).toFixed(2)} ㎥</div></div><div class="kv"><div>${t.l.continuous}</div><div>${Number(r.sustained||0).toFixed(2)} ㎥/h</div></div>`;
+      const purgeMinutes=totalSupply>0 ? (Number(r.initial||0)/totalSupply)*60 : null;
+      const purgeDurationRow=purgeMinutes===null ? '' : `<div class="kv translated-purge-duration"><div>${t.l.initialDuration}</div><div>${formatV04NumberFor(purgeMinutes,1,code)} min · ${t.l.supply} ${formatV04NumberFor(totalSupply,1,code)} ㎥/h</div></div>`;
+      ventilationRows = `<div class="kv"><div>${t.l.initial}</div><div>${Number(r.initial||0).toFixed(2)} ㎥</div></div><div class="kv"><div>${t.l.continuous}</div><div>${Number(r.sustained||0).toFixed(2)} ㎥/h</div></div>${purgeDurationRow}`;
     } else {
       ventilationRows = `<div class="kv"><div>${t.l.required}</div><div>${Number(requiredQ||0).toFixed(2)} ㎥/h</div></div>`;
     }

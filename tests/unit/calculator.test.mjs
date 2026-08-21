@@ -480,6 +480,34 @@ test("translated report output and measurement reliability warnings render witho
   dom.window.close();
 });
 
+test("every foreign volume-exchange report includes the calculated initial purge duration", async () => {
+  const { dom, document, window, errors } = await loadApp();
+  window.setUiLanguage("en");
+  window.selectMode("A");
+  setValue(window, document.querySelector('input[type="number"]'), 100);
+  window.computeAndRenderStep4();
+  window.addFanRow("Test blower", 500, 75, false);
+  const foreignCodes=Array.from(document.querySelectorAll('#ui-language option'), option=>option.value)
+    .filter(code=>code!=="ko"&&code!=="en");
+  for (const code of foreignCodes) {
+    window.setV04SupplementalPrintLanguage(code, true);
+  }
+  window.renderTranslatedReports();
+  const reports=Array.from(document.querySelectorAll('.translated-report'));
+  assert.deepEqual(new Set(reports.map(report=>report.dataset.language)), new Set(["en",...foreignCodes]));
+  for (const report of reports) {
+    const code=report.dataset.language;
+    const duration=report.querySelector('.translated-purge-duration');
+    assert.ok(duration, `${code}: ${report.textContent}`);
+    const expected=window.formatV04NumberFor((1000/750)*60,1,code);
+    assert.ok(duration.textContent.includes(`${expected} min`), `${code}: expected ${expected}; actual ${duration.textContent}`);
+    assert.ok(duration.querySelector('div:first-child').textContent.trim(), code);
+    assert.doesNotMatch(duration.textContent, /최초 급기/, code);
+  }
+  assert.deepEqual(errors, []);
+  dom.window.close();
+});
+
 test("invalid session payload is rejected, and hostile text is safely escaped", async () => {
   const { dom, document, window, errors } = await loadApp();
   const rejected = window.sanitizeV04Session({
