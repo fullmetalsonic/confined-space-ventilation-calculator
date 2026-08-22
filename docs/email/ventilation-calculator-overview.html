@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>밀폐공간 환기량 산정 도구 / Confined Space Ventilation Calculator</title>
+  <style>
+    body{margin:0;background:#f7fcff;color:#173047;font:16px/1.65 Arial,"Malgun Gothic",sans-serif}.wrap{max-width:820px;margin:auto;background:#fff}.hero{padding:34px 28px;background:linear-gradient(120deg,#05507d,#00a5e5);color:#fff}.hero h1{margin:0;font-size:30px}.hero p{margin:8px 0 0;font-size:17px}.content{padding:26px 28px}h2{margin:28px 0 10px;color:#05507d;font-size:23px}p{margin:8px 0}.notice{margin:20px 0;padding:13px 15px;border-left:4px solid #b3261e;background:#fbe9e7;color:#7a1e17}.shot{display:block;max-width:100%;border:1px solid #cfe7f4;border-radius:8px;margin:16px 0}.btn{display:inline-block;padding:11px 16px;background:#05507d;color:#fff!important;text-decoration:none;border-radius:6px;font-weight:bold}.muted{color:#526a7d;font-size:14px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero"><h1>밀폐공간 환기량 산정 도구<br>Confined Space Ventilation Calculator</h1><p>최초 급기량 · 작업 중 유지 환기량 · 송배풍기 매칭 / Initial purge · Continuous airflow · Blower matching</p></header>
+    <main class="content">
+      <p>밀폐공간 작업 전 환기 계획을 정리하는 오프라인 계산 도구입니다. 안전 기준 프로필, 계산 방식, 공간 체적과 작업 조건을 입력하면 필요한 환기량과 보유 장비의 필요 대수·여유율을 비교할 수 있습니다.</p>
+      <p>An offline planning tool for confined-space ventilation. Select the safety profile, method, space volume, and work conditions to compare required airflow with available blowers.</p>
+      <img class="shot" src="https://raw.githubusercontent.com/fullmetalsonic/confined-space-ventilation-calculator/main/docs/assets/calculator-start-ko.png" alt="Korean calculator start screen">
+      <h2>사용 흐름 / Workflow</h2>
+      <p><strong>1.</strong> 작업 장소의 안전 기준 프로필을 선택합니다. / Select the applicable safety jurisdiction profile.</p>
+      <p><strong>2.</strong> 계산 방식, 공간 체적, 작업 조건을 입력합니다. / Enter the method, space volume, and work conditions.</p>
+      <p><strong>3.</strong> 최초 급기량과 유지 환기량을 확인하고 보유 송배풍기를 매칭합니다. / Review initial purge and continuous airflow, then match available blowers.</p>
+      <p><strong>4.</strong> 결과서는 작업허가서에 붙이는 계획 참고자료로 사용합니다. / Use the result report as a planning attachment to the work permit.</p>
+      <aside class="notice"><strong>안전 고지 / Safety notice:</strong> 계산값만으로 출입을 허가하지 마십시오. 작업 전·재개 전과 작업 중 현장 대기를 측정·평가하고, 현행 법규와 사업장 작업허가 절차를 따르십시오. / Never authorize entry from calculations alone. Measure and evaluate the atmosphere and follow applicable requirements and the site permit procedure.</aside>
+      <p><a class="btn" href="https://fullmetalsonic.github.io/confined-space-ventilation-calculator/">계산기 열기 / Open calculator</a></p>
+      <p class="muted">첨부: 한국어 사용 안내, English user guide, HTML 소개서</p>
+    </main>
+  </div>
+</body>
+</html>

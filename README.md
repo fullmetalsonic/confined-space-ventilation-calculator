@@ -16,10 +16,30 @@ It runs in a browser, Windows application, or Android application.
 > re-entry, and during work, measure and evaluate oxygen and hazardous gases
 > according to applicable law and the site work-permit procedure.
 
+## 실제 화면 / See the calculator
+
+![Confined Space Ventilation Calculator — Korean start screen](docs/assets/calculator-start-ko.png)
+
+작업 장소의 **안전 기준 프로필**을 먼저 선택한 뒤, 계산 방식·공간 체적·작업
+조건을 입력하면 최초 급기량, 작업 중 유지 환기량, 그리고 보유 송배풍기의 필요
+대수와 여유율을 한 화면 흐름으로 확인할 수 있습니다.
+
+Select the workplace **safety jurisdiction profile**, then enter the method,
+space volume, and work conditions. The calculator presents the initial purge,
+continuous airflow, and the required blower quantity with reserve margin in
+one workflow.
+
+| 화면에서 하는 일 / What you do | 결과 / What you get |
+| --- | --- |
+| 안전 기준, 계산 방식, 공간·작업 조건 선택 / Choose profile, method, space, and conditions | 최초 급기량과 작업 중 유지 환기량 / Initial purge and continuous airflow |
+| 보유 장비의 실질 풍량과 대수 입력 / Enter available blowers and actual airflow basis | 필요 대수·계획 대수·여유율 / Required quantity, planned quantity, and reserve margin |
+
 ## 빠른 사용 안내 / Quick user guide
 
 - 공개 도구 / Live tool: <https://fullmetalsonic.github.io/confined-space-ventilation-calculator/>
-- 한·영 화면 캡처 안내 / Bilingual illustrated guide: [docs/user-guide.html](docs/user-guide.html)
+- 한·영 통합 안내 / Bilingual illustrated guide: [docs/user-guide.html](docs/user-guide.html)
+- 한국어 설명서 / Korean guide: [docs/user-guide-ko.html](docs/user-guide-ko.html)
+- English user guide: [docs/user-guide-en.html](docs/user-guide-en.html)
 
 ## 가장 쉬운 실행 방법
 

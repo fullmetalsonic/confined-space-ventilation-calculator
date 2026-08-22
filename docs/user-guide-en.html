@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="English user guide for the Confined Space Ventilation Calculator: safety profile, calculation methods, blower matching, and report printing.">
+  <title>English User Guide | Confined Space Ventilation Calculator</title>
+  <style>
+    :root{--navy:#05507d;--sky:#00a5e5;--paper:#f7fcff;--ink:#173047;--muted:#526a7d;--line:#cfe7f4}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:Arial,"Malgun Gothic",sans-serif;line-height:1.7}header{padding:42px 20px;background:linear-gradient(120deg,var(--navy),var(--sky));color:#fff}.wrap{max-width:980px;margin:auto;padding:28px 20px 56px}h1{margin:0;font-size:clamp(28px,4vw,42px)}h2{margin:0 0 9px;color:var(--navy);font-size:24px}p{margin:8px 0}.lede{max-width:760px;font-size:18px;opacity:.96}.notice{margin:20px 0;padding:14px 16px;border-left:4px solid #b3261e;background:#fbe9e7;color:#7a1e17;border-radius:6px}.card{margin:18px 0;padding:22px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:0 5px 16px rgba(5,80,125,.05)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}.step{display:grid;grid-template-columns:40px 1fr;gap:12px;margin:14px 0}.num{width:32px;height:32px;border-radius:50%;background:var(--navy);color:#fff;text-align:center;line-height:32px;font-weight:800}.caption{font-size:14px;color:var(--muted)}img{display:block;width:100%;border:1px solid var(--line);border-radius:9px;margin-top:14px}.link{display:inline-block;margin-top:10px;color:var(--navy);font-weight:800}@media(max-width:680px){.grid{grid-template-columns:1fr}.card{padding:17px}}
+  </style>
+</head>
+<body>
+  <header><div class="wrap"><h1>Confined Space Ventilation Calculator</h1><p class="lede">English user guide — initial purge, continuous ventilation, and blower matching</p></div></header>
+  <main class="wrap">
+    <p><a class="link" href="index.html">← Open calculator</a> · <a class="link" href="user-guide-ko.html">한국어 안내</a></p>
+    <aside class="notice"><strong>Safety notice:</strong> Never authorize entry from calculations alone. Before entry, re-entry, and during work, measure and evaluate the atmosphere and follow current requirements and the site work-permit procedure.</aside>
+    <section class="card"><div class="grid"><div><h2>1. Safety profile and UI language</h2><p>Screen language does not select the law. First select the safety jurisdiction profile that applies to the workplace, then select the language that helps the user read the interface.</p><p>The official legal text and site procedure take precedence over translations.</p></div><div><img src="https://raw.githubusercontent.com/fullmetalsonic/confined-space-ventilation-calculator/main/docs/assets/calculator-start-en.png" alt="English calculator start screen with safety jurisdiction profile"><p class="caption">English start screen: jurisdiction profile, paper, and units</p></div></div></section>
+    <section class="card"><h2>2. Calculation method and space volume</h2><div class="step"><div class="num">A</div><p>Use <strong>volume exchange</strong> when no continuous source is identified. Add or subtract areas to enter the actual air volume.</p></div><div class="step"><div class="num">B</div><p>Use the <strong>known generation-rate method</strong> when the generation rate is known; use the <strong>measured-concentration method</strong> only when the required measurement data are available.</p></div></section>
+    <section class="card"><h2>3. Work conditions and blower matching</h2><div class="step"><div class="num">3</div><p>Confirm initial-purge and continuous-airflow criteria against the selected profile and site risk assessment.</p></div><div class="step"><div class="num">4</div><p>Review the initial purge requirement separately from continuous airflow during work.</p></div><div class="step"><div class="num">5</div><p>Use the airflow basis that matches the evidence—rated flow with correction, manufacturer operating point, or field measurement—then review required quantity and reserve margin.</p></div></section>
+    <section class="card"><h2>4. Print the report</h2><p>The report is a <strong>planning attachment</strong> for the work permit. Supplementary translations can be printed, but they never replace atmospheric measurement, the official source, or the site procedure.</p></section>
+  </main>
+</body>
+</html>
